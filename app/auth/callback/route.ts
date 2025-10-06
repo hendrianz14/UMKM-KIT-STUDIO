@@ -1,23 +1,28 @@
-import { cookies } from "next/headers";
-import { createServerClient } from "@supabase/ssr";
+import { NextResponse } from "next/server";
+import { supabaseRoute } from "@/lib/supabase-route";
 
 export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const code = url.searchParams.get("code");
-  const redirect = url.searchParams.get("redirect") || "/dashboard";
-  const remember = url.searchParams.get("remember") === "1";
+  const requestUrl = new URL(req.url);
+  const code = requestUrl.searchParams.get("code");
+  const redirectParam = requestUrl.searchParams.get("redirect") || "/dashboard";
+  const redirectPath = redirectParam.startsWith("/") ? redirectParam : "/dashboard";
+  const origin = requestUrl.origin;
 
-  const store = cookies();
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { cookies: {
-        get: (n) => store.get(n)?.value,
-        set: (n,v,o) => store.set({ name:n, value:v, ...o, ...(remember ? { maxAge: 60*60*24*30 } : {}) }),
-        remove: (n,o) => store.set({ name:n, value:"", ...o, maxAge:0 }),
-      }
-    }
-  );
+  const successResponse = NextResponse.redirect(new URL(redirectPath, origin));
 
-  if (code) await supabase.auth.exchangeCodeForSession(code);
-  return Response.redirect(new URL(redirect, url.origin));
+  if (!code) {
+    return successResponse;
+  }
+
+  const supabase = await supabaseRoute(successResponse);
+  const { error } = await supabase.auth.exchangeCodeForSession(code);
+
+  if (error) {
+    const errorUrl = new URL("/sign-in", origin);
+    errorUrl.searchParams.set("error", "Kredensial tidak valid");
+    errorUrl.searchParams.set("redirect", redirectPath);
+    return NextResponse.redirect(errorUrl);
+  }
+
+  return successResponse;
 }

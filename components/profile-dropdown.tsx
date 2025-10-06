@@ -3,11 +3,11 @@
 
 import React from 'react';
 import { LogoutIcon } from '../lib/icons';
-import { User } from '../lib/types';
+import type { SessionUser } from '../lib/types';
 
 interface ProfileDropdownProps {
   isOpen: boolean;
-  user: User;
+  user: SessionUser;
 }
 
 const ProfileDropdown: React.FC<ProfileDropdownProps> = ({ isOpen, user }) => {

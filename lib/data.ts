@@ -1,58 +1,200 @@
-// lib/data.ts
-import { supabase } from './supabase-client';
-import { User, DashboardStatsData, Project, CreditHistoryItem, AppData } from './types';
+import type { User as SupabaseAuthUser } from "@supabase/supabase-js";
+import { createSupabaseServerClient } from "./supabase-server";
+import type {
+  AppData,
+  User,
+  DashboardStatsData,
+  Project,
+  CreditHistoryItem,
+  Plan,
+  SessionUser,
+} from "./types";
 
-// CATATAN PENTING:
-// 1. Ganti 'nama_tabel_anda' dengan nama tabel yang sebenarnya di Supabase.
-// 2. Pastikan kebijakan RLS (Row Level Security) Anda di Supabase dikonfigurasi
-//    untuk mengizinkan permintaan 'select' ini.
-// 3. Diasumsikan Anda memiliki data pengguna yang terkait dengan sesi saat ini.
-//    Untuk proyek nyata, Anda akan mendapatkan ID pengguna dari sesi Supabase Auth.
-//    Untuk contoh ini, kita akan mengambil data pertama yang ditemukan.
+type ProjectRow = {
+  id: number | string;
+  title: string;
+  type: string | null;
+  image_url: string | null;
+  user_id: string;
+};
 
-async function fetchFromSupabase(tableName: string, errorMessage: string) {
-  const { data, error } = await supabase.from(tableName).select('*').limit(1).single();
+type LedgerRow = {
+  id: number;
+  user_id: string;
+  reason: string | null;
+  amount: number;
+  transaction_no: number | string | null;
+  created_at: string;
+};
 
-  if (error) {
-    console.error(`Error fetching ${tableName}:`, error);
-    throw new Error(errorMessage);
+function startOfThisWeekISO() {
+  const now = new Date();
+  // Minggu dimulai Senin (Asia/Jakarta); hitung relatif local time
+  const day = (now.getDay() + 6) % 7; // Sen=0
+  const start = new Date(now);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(now.getDate() - day);
+  return start.toISOString();
+}
+
+const planMap: Record<string, Plan> = {
+  Free: "Gratis",
+  Basic: "Basic",
+  Pro: "Pro",
+  Business: "Enterprise",
+};
+
+type SessionData = {
+  user: SessionUser;
+};
+
+function buildSessionUser(authUser: SupabaseAuthUser): SessionUser {
+  const metadataName =
+    (authUser.user_metadata?.full_name as string | undefined) ??
+    (authUser.user_metadata?.name as string | undefined) ??
+    (authUser.user_metadata?.user_name as string | undefined);
+
+  const fallbackName =
+    authUser.email?.split("@")[0] ?? (authUser.phone ?? authUser.id);
+
+  return {
+    id: authUser.id,
+    name: metadataName?.trim() || fallbackName,
+    email: authUser.email ?? "",
+  };
+}
+
+async function getSupabaseWithUser(): Promise<{
+  supabase: ReturnType<typeof createSupabaseServerClient>;
+  user: SupabaseAuthUser | null;
+}> {
+  const supabase = createSupabaseServerClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) {
+    return { supabase, user: null };
   }
-  return data;
+
+  return { supabase, user };
 }
 
-export async function getUser(): Promise<User> {
-  // Dalam aplikasi nyata, Anda akan mendapatkan pengguna yang sedang login.
-  // const { data: { user } } = await supabase.auth.getUser();
-  // const { data, error } = await supabase.from('users').select('*').eq('id', user.id).single();
-  
-  // Untuk tujuan demo, kita ambil pengguna pertama dari tabel 'users'.
-  // GANTI 'users' dengan nama tabel pengguna Anda.
-  return await fetchFromSupabase('users', 'Gagal mengambil data pengguna.');
-}
+export async function getAppData(): Promise<SessionData | null> {
+  const { user } = await getSupabaseWithUser();
 
-export async function getDashboardStats(): Promise<DashboardStatsData> {
-  // GANTI 'dashboard_stats' dengan nama tabel statistik Anda.
-  return await fetchFromSupabase('dashboard_stats', 'Gagal mengambil statistik dasbor.');
-}
-
-export async function getProjects(): Promise<Project[]> {
-  // GANTI 'projects' dengan nama tabel proyek Anda.
-  const { data, error } = await supabase.from('projects').select('*');
-
-  if (error) {
-    console.error('Error fetching projects:', error);
-    throw new Error('Gagal mengambil data proyek.');
+  if (!user) {
+    return null;
   }
-  return data || [];
+
+  return {
+    user: buildSessionUser(user),
+  };
 }
 
-export async function getCreditHistory(): Promise<CreditHistoryItem[]> {
-  // GANTI 'credit_history' dengan nama tabel riwayat kredit Anda.
-  const { data, error } = await supabase.from('credit_history').select('*').order('date', { ascending: false });
+export async function getDashboardData(): Promise<AppData | null> {
+  const { supabase, user: authUser } = await getSupabaseWithUser();
 
-  if (error) {
-    console.error('Error fetching credit history:', error);
-    throw new Error('Gagal mengambil riwayat kredit.');
+  if (!authUser) {
+    return null;
   }
-  return data || [];
+
+  const uid = authUser.id;
+
+  // profiles + wallet
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("name, plan, plan_expires_at")
+    .eq("user_id", uid)
+    .single();
+
+  const { data: wallet } = await supabase
+    .from("credits_wallet")
+    .select("balance")
+    .eq("user_id", uid)
+    .single();
+
+  // projects
+  const { data: projectsRaw } = await supabase
+    .from("projects")
+    .select("id, title, type, image_url, user_id")
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false })
+    .limit(12);
+
+  const projects: Project[] = (projectsRaw ?? []).map((p: ProjectRow) => ({
+    id: Number(p.id),
+    title: p.title,
+    type:
+      p.type === "image"
+        ? "Gambar AI"
+        : p.type === "caption"
+        ? "Caption AI"
+        : p.type === "video"
+        ? "Video AI"
+        : String(p.type ?? ""),
+    imageUrl: p.image_url ?? null,
+    user_id: p.user_id,
+  }));
+
+  // credit history (limit 20)
+  const { data: ledger } = await supabase
+    .from("credits_ledger")
+    .select("id, user_id, reason, amount, transaction_no, created_at")
+    .eq("user_id", uid)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  const creditHistory: CreditHistoryItem[] = (ledger ?? []).map((l: LedgerRow) => ({
+    id: l.id,
+    user_id: l.user_id,
+    type:
+      l.reason === "seed"
+        ? "seed"
+        : l.reason === "top_up"
+        ? "Top Up"
+        : l.reason === "refund"
+        ? "Refund"
+        : l.amount < 0
+        ? "Credit Usage"
+        : "Credit",
+    date: new Date(l.created_at).toISOString(),
+    amount: Number(l.amount),
+    transactionId: Number(l.transaction_no ?? l.id),
+  }));
+
+  // stats: weeklyWork & totalCreditsUsed
+  const weekISO = startOfThisWeekISO();
+  const { count: weeklyCount } = await supabase
+    .from("generations")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", uid)
+    .eq("status", "succeeded")
+    .gte("created_at", weekISO);
+
+  const totalCreditsUsed = creditHistory
+    .filter((h) => h.amount < 0)
+    .reduce((a, b) => a + Math.abs(b.amount), 0);
+
+  const userData: User = {
+    id: uid,
+    name: profile?.name || authUser.user_metadata?.name || "User",
+    email: authUser.email || "",
+    plan: planMap[profile?.plan as string] ?? "Free",
+    credits: Number(wallet?.balance ?? 0),
+    expiryDate: profile?.plan_expires_at ? new Date(profile.plan_expires_at).toISOString() : "",
+  };
+
+  const stats: DashboardStatsData = {
+    weeklyWork: weeklyCount || 0,
+    totalCreditsUsed,
+  };
+
+  return {
+    user: userData,
+    dashboardStats: stats,
+    projects,
+    creditHistory,
+  };
 }

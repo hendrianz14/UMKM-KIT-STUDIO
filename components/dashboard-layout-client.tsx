@@ -5,11 +5,11 @@ import React, { useState } from 'react';
 import Sidebar from './sidebar';
 import Header from './header';
 import FeedbackModal from './feedback-modal';
-import { User } from '../lib/types';
+import type { SessionUser } from '../lib/types';
 
 interface DashboardLayoutClientProps {
     children: React.ReactNode;
-    user: User;
+    user: SessionUser;
 }
 
 const DashboardLayoutClient: React.FC<DashboardLayoutClientProps> = ({ children, user }) => {

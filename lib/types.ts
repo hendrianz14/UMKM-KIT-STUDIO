@@ -1,14 +1,15 @@
-// lib/types.ts
-
 export type Plan = 'Gratis' | 'Basic' | 'Pro' | 'Enterprise';
 
-export interface User {
-  id: string; // Biasanya UUID dari Supabase
+export interface SessionUser {
+  id: string;
   name: string;
   email: string;
+}
+
+export interface User extends SessionUser {
   plan: Plan;
   credits: number;
-  expiryDate: string; // Sebaiknya dalam format ISO 8601 (misal: "2025-10-12T00:00:00Z")
+  expiryDate: string; // ISO string
 }
 
 export interface DashboardStatsData {
@@ -19,18 +20,18 @@ export interface DashboardStatsData {
 export interface Project {
   id: number;
   title: string;
-  type: string;
-  imageUrl: string;
-  user_id: string; // Foreign key ke tabel user
+  type: string;       // "Gambar AI" | "Caption AI" | "Video AI"
+  imageUrl: string | null;
+  user_id: string;
 }
 
 export interface CreditHistoryItem {
   id: number;
-  type: string;
-  date: string; // Sebaiknya dalam format ISO 8601
+  type: string;       // "seed" | "Top Up" | "Refund" | "Credit Usage"
+  date: string;       // ISO
   amount: number;
   transactionId: number;
-  user_id: string; // Foreign key ke tabel user
+  user_id: string;
 }
 
 export interface AppData {

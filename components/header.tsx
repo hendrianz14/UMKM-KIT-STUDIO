@@ -4,12 +4,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { MenuIcon } from '../lib/icons';
 import ProfileDropdown from './profile-dropdown';
-import { User } from '../lib/types';
+import type { SessionUser } from '../lib/types';
 
 interface HeaderProps {
   onMenuClick: () => void;
   onFeedbackClick: () => void;
-  user: User;
+  user: SessionUser;
 }
 
 const Header: React.FC<HeaderProps> = ({ onMenuClick, onFeedbackClick, user }) => {

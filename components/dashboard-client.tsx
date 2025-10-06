@@ -6,10 +6,11 @@ import ActiveCreditCard from './active-credit-card';
 import ProjectCard from './project-card';
 import ShareModal from './share-modal';
 import { AppData, Project, CreditHistoryItem } from '../lib/types';
+import { formatDateID /*, formatRelativeID*/ } from "@/lib/format";
 
 const DashboardStats: React.FC<{ stats: AppData['dashboardStats']; user: AppData['user'] }> = ({ stats, user }) => (
   <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-12">
-    <ActiveCreditCard plan={user.plan} credits={user.credits} expiryDate={user.expiryDate} />
+    <ActiveCreditCard plan={user.plan} credits={user.credits} expiryDate={formatDateID(user.expiryDate)} />
     <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex flex-col justify-between">
       <div>
         <p className="text-[#1565C0] text-base">Pekerjaan minggu ini :</p>
@@ -68,7 +69,7 @@ const CreditsHistory: React.FC<{ history: CreditHistoryItem[] }> = ({ history })
         >
           <div>
             <p className="font-semibold">{item.type}</p>
-            <p className="text-sm text-gray-500">{item.date}</p>
+            <p className="text-sm text-gray-500">{formatDateID(item.date)}</p>
           </div>
           <div>
             <p className={`font-bold ${item.amount > 0 ? 'text-green-600' : 'text-red-600'}`}>

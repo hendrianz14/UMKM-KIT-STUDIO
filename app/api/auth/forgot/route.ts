@@ -1,4 +1,4 @@
-import { supabaseRoute } from "@/lib/supabase";
+import { supabaseRoute } from "@/lib/supabase-route";
 
 export async function POST(req: Request) {
   const form = await req.formData();
@@ -7,7 +7,7 @@ export async function POST(req: Request) {
     return new Response("Email required", { status: 400 });
   }
 
-  const supabase = supabaseRoute();
+  const supabase = await supabaseRoute();
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
     redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL}/auth/callback`,
   });

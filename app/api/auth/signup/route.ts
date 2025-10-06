@@ -1,4 +1,4 @@
-import { supabaseRoute } from "@/lib/supabase";
+import { supabaseRoute } from "@/lib/supabase-route";
 
 export async function POST(req: Request) {
   const form = await req.formData();
@@ -9,7 +9,7 @@ export async function POST(req: Request) {
     return new Response("Email/Password required", { status: 400 });
   }
 
-  const supabase = supabaseRoute();
+  const supabase = await supabaseRoute();
   const { error } = await supabase.auth.signUp({
     email,
     password,

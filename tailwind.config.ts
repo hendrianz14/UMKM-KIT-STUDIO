@@ -3,7 +3,7 @@ import type { Config } from 'tailwindcss';
 const config: Config = {
   content: [
     './app/**/*.{js,ts,jsx,tsx,mdx}',
-    './components/**/*.{js,ts,jsx,tsx,mdx}',
+    './components/**/*.{js,ts,jsx,tsx,mdx}', // <-- PATH PENTING DITAMBAHKAN DI SINI
   ],
   theme: {
     extend: {
@@ -24,11 +24,32 @@ const config: Config = {
         subtlePulse: {
           '0%, 100%': { borderColor: 'rgba(255, 193, 7, 0.4)' },
           '50%': { borderColor: 'rgba(255, 193, 7, 1)' },
-        }
+        },
+        'spin-slow': {
+          from: { transform: 'rotate(0deg)' },
+          to: { transform: 'rotate(360deg)' },
+        },
+        shimmer: {
+          '0%': { backgroundPosition: '200% 0' },
+          '100%': { backgroundPosition: '-200% 0' },
+        },
+        fadeInTopRight: {
+          from: {
+            opacity: '0',
+            transform: 'translate(20px, -20px) scale(0.95)',
+          },
+          to: {
+            opacity: '1',
+            transform: 'translate(0, 0) scale(1)',
+          },
+        },
       },
       animation: {
         fadeInUp: 'fadeInUp 0.8s ease-out forwards',
         subtlePulse: 'subtlePulse 2.5s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+        'spin-slow': 'spin-slow 5s linear infinite',
+        shimmer: 'shimmer 3s linear infinite',
+        fadeInTopRight: 'fadeInTopRight 0.3s ease-out forwards',
       }
     },
   },

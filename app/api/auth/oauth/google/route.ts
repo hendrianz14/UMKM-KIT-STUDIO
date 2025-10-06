@@ -1,12 +1,11 @@
-import { createRouteHandlerClient } from "@supabase/auth-helpers-nextjs";
-import { cookies } from "next/headers";
+import { supabaseRoute } from "@/lib/supabase-route";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const redirect = url.searchParams.get("redirect") || "/dashboard";
   const remember = url.searchParams.get("remember") === "1" ? "1" : "0";
 
-  const supabase = createRouteHandlerClient({ cookies });
+  const supabase = await supabaseRoute();
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: "google",
     options: {

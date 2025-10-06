@@ -1,22 +1,102 @@
 'use client';
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
+import type { AuthError } from '@supabase/supabase-js';
+import { createClient as createSupabaseClient } from '@/utils/supabase/client';
 import { useAuthMessages } from '../hooks/useAuthMessages';
 import { useInView } from '../hooks/useInView';
 import GoogleIcon from './ui/GoogleIcon';
 import Alert from './ui/Alert';
 import RememberGoogleLinkSync from './auth/RememberGoogleLinkSync';
 
+type AuthErrorCode = 'invalid_credentials' | 'email_not_confirmed' | 'rate_limit_exceeded';
+
+const AUTH_ERROR_MESSAGES: Record<AuthErrorCode | 'unknown', string> = {
+  invalid_credentials: 'Email atau kata sandi salah. Periksa kembali.',
+  email_not_confirmed: 'Email belum dikonfirmasi. Cek inbox Anda untuk tautan verifikasi.',
+  rate_limit_exceeded: 'Terlalu banyak percobaan. Silakan coba lagi beberapa saat lagi.',
+  unknown: 'Terjadi kesalahan. Silakan coba lagi.',
+};
+
+const KNOWN_ERROR_CODES = new Set<AuthErrorCode>([
+  'invalid_credentials',
+  'email_not_confirmed',
+  'rate_limit_exceeded',
+]);
+
+function detectCodeFromMessage(message: string): AuthErrorCode | null {
+  const normalized = message.toLowerCase();
+
+  if (normalized.includes('email not confirmed') || normalized.includes('confirm your email')) {
+    return 'email_not_confirmed';
+  }
+
+  if (normalized.includes('too many requests') || normalized.includes('rate limit')) {
+    return 'rate_limit_exceeded';
+  }
+
+  if (
+    normalized.includes('invalid login') ||
+    normalized.includes('invalid email or password') ||
+    normalized.includes('invalid credentials') ||
+    normalized.includes('invalid_grant')
+  ) {
+    return 'invalid_credentials';
+  }
+
+  return null;
+}
+
+function resolveAuthError(error: AuthError | null): string {
+  if (!error) {
+    return AUTH_ERROR_MESSAGES.unknown;
+  }
+
+  const augmented = error as AuthError & { code?: string; status?: number };
+  const codeFromError = typeof augmented.code === 'string' ? augmented.code.toLowerCase() : '';
+
+  if (KNOWN_ERROR_CODES.has(codeFromError as AuthErrorCode)) {
+    return AUTH_ERROR_MESSAGES[codeFromError as AuthErrorCode];
+  }
+
+  if (augmented.status === 429) {
+    return AUTH_ERROR_MESSAGES.rate_limit_exceeded;
+  }
+
+  if (augmented.status === 400) {
+    return AUTH_ERROR_MESSAGES.invalid_credentials;
+  }
+
+  if (augmented.message) {
+    const inferred = detectCodeFromMessage(augmented.message);
+    if (inferred) {
+      return AUTH_ERROR_MESSAGES[inferred];
+    }
+
+    return augmented.message;
+  }
+
+  return AUTH_ERROR_MESSAGES.unknown;
+}
+
 const SignIn: React.FC = () => {
+  const router = useRouter();
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     remember: false,
   });
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [ref, isInView] = useInView({ threshold: 0.2, triggerOnce: true });
   const { errorMessage, infoMessage } = useAuthMessages();
+  const supabase = useMemo(() => createSupabaseClient(), []);
 
-  const hasAlertSpacing = useMemo(() => Boolean(errorMessage || infoMessage), [errorMessage, infoMessage]);
+  const hasAlertSpacing = useMemo(
+    () => Boolean(errorMessage || infoMessage || formError),
+    [errorMessage, infoMessage, formError]
+  );
 
   useEffect(() => {
     const savedEmail = localStorage.getItem('rememberedEmail');
@@ -33,13 +113,46 @@ const SignIn: React.FC = () => {
     }));
   }, []);
 
-  const handleSubmit = useCallback(() => {
-    if (formData.remember) {
-      localStorage.setItem('rememberedEmail', formData.email);
-    } else {
-      localStorage.removeItem('rememberedEmail');
-    }
-  }, [formData.email, formData.remember]);
+  const handleSubmit = useCallback(
+    async (event: React.FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      setFormError(null);
+
+      const email = formData.email.trim();
+      const password = formData.password;
+
+      if (formData.remember) {
+        localStorage.setItem('rememberedEmail', email);
+      } else {
+        localStorage.removeItem('rememberedEmail');
+      }
+
+      if (!email || !password) {
+        setFormError('Email dan kata sandi wajib diisi.');
+        return;
+      }
+
+      setIsSubmitting(true);
+
+      try {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error) {
+          setFormError(resolveAuthError(error));
+          return;
+        }
+
+        setFormError(null);
+        router.replace('/dashboard');
+        router.refresh();
+      } catch {
+        setFormError('Tidak dapat terhubung ke server. Silakan coba lagi.');
+      } finally {
+        setIsSubmitting(false);
+      }
+    },
+    [formData.email, formData.password, formData.remember, router, supabase]
+  );
 
   const handleForgot = useCallback((event: React.MouseEvent<HTMLAnchorElement>) => {
     event.preventDefault();
@@ -64,8 +177,8 @@ const SignIn: React.FC = () => {
       {errorMessage && <Alert message={errorMessage} variant="error" />}
       {!errorMessage && infoMessage && <Alert message={infoMessage} variant="success" />}
 
-      <form method="post" action="/api/auth/signin" onSubmit={handleSubmit} className="space-y-4">
-        <input type="hidden" name="redirect" value="/dashboard" />
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {formError && <Alert message={formError} variant="error" />}
         <div style={{ animationDelay: '200ms' }} className={isInView ? 'animate-fadeInUp' : 'opacity-0'}>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
             Email Address
@@ -122,6 +235,7 @@ const SignIn: React.FC = () => {
         <div style={{ animationDelay: '500ms' }} className={isInView ? 'animate-fadeInUp' : 'opacity-0'}>
           <button
             type="submit"
+            disabled={isSubmitting}
             className="w-full flex justify-center py-3 px-4 border border-transparent rounded-lg shadow-lg text-lg font-bold text-white bg-secondary hover:bg-primary focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary transition-all duration-300 transform hover:scale-105"
           >
             Sign In
@@ -153,7 +267,7 @@ const SignIn: React.FC = () => {
       </div>
 
       <p className="mt-8 text-center text-sm text-gray-500">
-        Don't have an account?{' '}
+        Don&apos;t have an account?{' '}
         <a href="/sign-up" className="font-semibold leading-6 text-secondary hover:text-primary">
           Sign Up
         </a>
