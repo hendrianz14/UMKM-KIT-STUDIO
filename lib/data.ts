@@ -115,13 +115,19 @@ export async function getDashboardData(): Promise<AppData | null> {
     .eq("user_id", uid)
     .single();
 
+  const { data: userApiKeyRow } = await supabase
+    .from("user_api_keys")
+    .select("updated_at")
+    .eq("user_id", uid)
+    .maybeSingle();
+
   // projects
   const { data: projectsRaw } = await supabase
     .from("projects")
     .select("id, title, type, image_url, user_id")
     .eq("user_id", uid)
     .order("created_at", { ascending: false })
-    .limit(12);
+    .limit(5);
 
   const projects: Project[] = (projectsRaw ?? []).map((p: ProjectRow) => ({
     id: Number(p.id),
@@ -139,7 +145,7 @@ export async function getDashboardData(): Promise<AppData | null> {
     .select("id, user_id, reason, amount, transaction_no, created_at")
     .eq("user_id", uid)
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(5);
 
   const creditHistory: CreditHistoryItem[] = (ledger ?? []).map((l: LedgerRow) => ({
     id: l.id,
@@ -191,5 +197,6 @@ export async function getDashboardData(): Promise<AppData | null> {
     dashboardStats: stats,
     projects,
     creditHistory,
+    userApiKeyStatus: { isSet: Boolean(userApiKeyRow) },
   };
 }

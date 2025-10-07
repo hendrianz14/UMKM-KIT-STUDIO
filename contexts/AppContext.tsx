@@ -1,7 +1,13 @@
-
 'use client';
 
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import React, {
+  createContext,
+  useState,
+  useContext,
+  ReactNode,
+  useEffect,
+  useCallback,
+} from 'react';
 import { AppData, Project } from '../lib/types';
 
 interface AppProviderProps {
@@ -15,7 +21,7 @@ interface AppContextType {
   projectToShare: Project | null;
   setProjectToShare: React.Dispatch<React.SetStateAction<Project | null>>;
   handleSaveProject: (newProject: Project) => void;
-  handleCreditDeduction: (amount: number) => void;
+  refreshAppData: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -31,58 +37,39 @@ export const AppProvider = ({ children, initialData = null }: AppProviderProps) 
   }, [initialData]);
 
   const handleSaveProject = (newProject: Project) => {
-    setAppData(prevData => {
-        if (!prevData) return null;
-        return {
-            ...prevData,
-            projects: [newProject, ...prevData.projects],
-        };
-    });
-  };
-
-  const handleCreditDeduction = (amount: number) => {
-    setAppData(prevData => {
+    setAppData((prevData) => {
       if (!prevData) return null;
-      
-      const newCredits = Math.max(0, prevData.user.credits - amount);
-      const newTotalCreditsUsed = prevData.dashboardStats.totalCreditsUsed + amount;
-
-      console.log(`[CREDIT] Deducting ${amount}. Old: ${prevData.user.credits}, New: ${newCredits}`);
-
       return {
         ...prevData,
-        user: {
-          ...prevData.user,
-          credits: newCredits,
-        },
-        dashboardStats: {
-            ...prevData.dashboardStats,
-            totalCreditsUsed: newTotalCreditsUsed,
-        },
-        creditHistory: [
-            {
-                id: Date.now(),
-                user_id: prevData.user.id,
-                type: 'Credit Usage',
-                date: new Date().toLocaleString(),
-                amount: -amount,
-                transactionId: Math.floor(Math.random() * 1000000),
-            },
-            ...prevData.creditHistory,
-        ]
+        projects: [newProject, ...prevData.projects],
       };
     });
   };
 
+  const refreshAppData = useCallback(async () => {
+    try {
+      const response = await fetch('/api/bootstrap', { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Failed to refresh app data: ${response.status}`);
+      }
+      const data = (await response.json()) as AppData;
+      setAppData(data);
+    } catch (error) {
+      console.error('Failed to refresh app data:', error);
+    }
+  }, []);
+
   return (
-    <AppContext.Provider value={{ 
-      appData, 
-      setAppData, 
-      projectToShare, 
-      setProjectToShare,
-      handleSaveProject,
-      handleCreditDeduction
-    }}>
+    <AppContext.Provider
+      value={{
+        appData,
+        setAppData,
+        projectToShare,
+        setProjectToShare,
+        handleSaveProject,
+        refreshAppData,
+      }}
+    >
       {children}
     </AppContext.Provider>
   );

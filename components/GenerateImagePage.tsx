@@ -89,6 +89,13 @@ interface SavedStyle {
     styles: SelectedStyles;
 }
 
+type ApiKeyStatusResponse = {
+    isSet?: boolean;
+    maskedKey?: string | null;
+    updatedAt?: string | null;
+    message?: string;
+};
+
 const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; message: string }> = ({ isOpen, onClose, message }) => {
     if (!isOpen) return null;
 
@@ -147,7 +154,7 @@ const UserApiErrorModal: React.FC<{
 };
 
 export default function GenerateImagePage() {
-    const { appData, handleSaveProject, handleCreditDeduction } = useAppContext();
+    const { appData, setAppData, handleSaveProject, refreshAppData } = useAppContext();
     const router = useRouter();
 
     const [originalImage, setOriginalImage] = useState<string | null>(null);
@@ -168,12 +175,16 @@ export default function GenerateImagePage() {
     const [isolateProduct, setIsolateProduct] = useState<boolean>(true);
     const [generationSuccess, setGenerationSuccess] = useState(false);
     const [savedStyles, setSavedStyles] = useState<SavedStyle[]>([]);
-    const [fullPromptForSaving, setFullPromptForSaving] = useState<string>('');
     const [isSaveStyleModalOpen, setIsSaveStyleModalOpen] = useState(false);
     const [newPresetName, setNewPresetName] = useState('');
     const [presetNameError, setPresetNameError] = useState<string | null>(null);
-    const [userApiKey, setUserApiKey] = useState<string | null>(null);
-    const [useOwnApiKey, setUseOwnApiKey] = useState(false);
+    const [apiKeyStatus, setApiKeyStatus] = useState<{ isSet: boolean; maskedKey: string | null; loading: boolean; error: string | null }>(() => ({
+        isSet: Boolean(appData?.userApiKeyStatus?.isSet),
+        maskedKey: null,
+        loading: true,
+        error: null,
+    }));
+    const [useOwnApiKey, setUseOwnApiKey] = useState(() => Boolean(appData?.userApiKeyStatus?.isSet));
 
     const [projectTitle, setProjectTitle] = useState('');
     const [generatedCaption, setGeneratedCaption] = useState('');
@@ -182,12 +193,41 @@ export default function GenerateImagePage() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
-        const storedKey = localStorage.getItem('user_gemini_api_key');
-        if (storedKey) {
-            setUserApiKey(storedKey);
-            setUseOwnApiKey(true);
-        }
-    }, []);
+        const controller = new AbortController();
+        const loadStatus = async () => {
+            setApiKeyStatus((prev) => ({ ...prev, loading: true, error: null }));
+            try {
+                const response = await fetch('/api/user/api-key', { cache: 'no-store', signal: controller.signal });
+                let payload: ApiKeyStatusResponse = {};
+                try {
+                    payload = (await response.json()) as ApiKeyStatusResponse;
+                } catch {
+                    payload = {};
+                }
+                if (!response.ok) {
+                    throw new Error(payload?.message ?? 'Gagal memuat status kunci API');
+                }
+                if (!controller.signal.aborted) {
+                    const isSet = Boolean(payload?.isSet);
+                    setApiKeyStatus({
+                        isSet,
+                        maskedKey: payload?.maskedKey ?? null,
+                        loading: false,
+                        error: null,
+                    });
+                    setAppData((prev) => (prev ? { ...prev, userApiKeyStatus: { isSet } } : prev));
+                    setUseOwnApiKey((prev) => prev || isSet);
+                }
+            } catch (error) {
+                if (!controller.signal.aborted) {
+                    const message = error instanceof Error ? error.message : 'Gagal memuat status kunci API';
+                    setApiKeyStatus((prev) => ({ ...prev, loading: false, error: message }));
+                }
+            }
+        };
+        loadStatus();
+        return () => controller.abort();
+    }, [setAppData]);
     
     const handleNavigate = (page: 'dashboard' | 'settings') => {
         if (page === 'dashboard') {
@@ -198,28 +238,55 @@ export default function GenerateImagePage() {
     };
 
     const handleGenericError = (err: unknown, wasUsingUserKey: boolean) => {
-        const message = err instanceof Error ? err.message : "Terjadi kesalahan.";
-        console.log(`--- [handleGenericError] Context: wasUsingUserKey=${wasUsingUserKey}, Raw error: "${message}"`);
-    
-        let userFriendlyMessage = "Terjadi kesalahan yang tidak terduga. Silakan coba lagi nanti.";
+        let message = 'Terjadi kesalahan.';
+        let code: string | undefined;
+
+        if (typeof err === 'string') {
+            message = err;
+        } else if (err && typeof err === 'object') {
+            const maybeMessage = (err as Record<string, unknown>).message;
+            const maybeCode = (err as Record<string, unknown>).code;
+            if (typeof maybeMessage === 'string') {
+                message = maybeMessage;
+            } else if (err instanceof Error) {
+                message = err.message;
+            }
+            if (typeof maybeCode === 'string') {
+                code = maybeCode;
+            }
+        } else if (err instanceof Error) {
+            message = err.message;
+        }
+
+        console.error('[GenerateImagePage] error:', { message, code, wasUsingUserKey });
+
+        let userFriendlyMessage = 'Terjadi kesalahan yang tidak terduga. Silakan coba lagi nanti.';
         const lowerCaseMessage = message.toLowerCase();
-    
+
+        const isInsufficientCredits = code === 'credits/insufficient' || lowerCaseMessage.includes('kredit tidak cukup');
+
         if (wasUsingUserKey) {
             if (lowerCaseMessage.includes('api key not valid') || lowerCaseMessage.includes('permission denied') || lowerCaseMessage.includes('api_key_invalid')) {
-                userFriendlyMessage = "Kunci API yang Anda masukkan tidak valid atau tidak memiliki izin.";
+                userFriendlyMessage = 'Kunci API yang Anda masukkan tidak valid atau tidak memiliki izin.';
             } else if (lowerCaseMessage.includes('resource has been exhausted')) {
-                userFriendlyMessage = "Kunci API Anda telah melebihi kuota penggunaan. Silakan periksa akun Google AI Studio Anda.";
+                userFriendlyMessage = 'Kunci API Anda telah melebihi kuota penggunaan. Silakan periksa akun Google AI Studio Anda.';
+            } else if (code === 'rate-limit') {
+                userFriendlyMessage = 'Permintaan terlalu sering. Mohon tunggu sebentar sebelum mencoba lagi.';
             } else {
-                userFriendlyMessage = `Gagal menggunakan kunci API Anda. Pastikan kunci tersebut benar dan aktif.`;
+                userFriendlyMessage = 'Gagal menggunakan kunci API Anda. Pastikan kunci tersebut benar dan aktif.';
             }
             setUserApiError(userFriendlyMessage);
         } else {
-            if (lowerCaseMessage.includes('resource has been exhausted')) {
-                userFriendlyMessage = "Kuota kredit aplikasi telah habis. Coba lagi nanti atau gunakan kunci API Anda sendiri.";
+            if (isInsufficientCredits) {
+                userFriendlyMessage = 'Kredit tidak cukup. Silakan top up atau gunakan kunci API Anda sendiri.';
+            } else if (code === 'rate-limit' || lowerCaseMessage.includes('rate-limit')) {
+                userFriendlyMessage = 'Permintaan terlalu sering. Mohon tunggu sebentar sebelum mencoba lagi.';
+            } else if (lowerCaseMessage.includes('resource has been exhausted')) {
+                userFriendlyMessage = 'Kuota kredit aplikasi telah habis. Coba lagi nanti atau gunakan kunci API Anda sendiri.';
             } else if (lowerCaseMessage.includes('safety')) {
-                userFriendlyMessage = "Konten tidak dapat dibuat karena melanggar kebijakan keamanan. Coba prompt/gambar yang berbeda.";
+                userFriendlyMessage = 'Konten tidak dapat dibuat karena melanggar kebijakan keamanan. Coba prompt/gambar yang berbeda.';
             } else if (lowerCaseMessage.includes('500') || lowerCaseMessage.includes('unknown') || lowerCaseMessage.includes('xhr') || lowerCaseMessage.includes('failed to fetch')) {
-                userFriendlyMessage = "Server AI sedang sibuk atau mengalami gangguan sesaat. Silakan coba lagi beberapa saat lagi.";
+                userFriendlyMessage = 'Server AI sedang sibuk atau mengalami gangguan sesaat. Silakan coba lagi beberapa saat lagi.';
             }
             setError(userFriendlyMessage);
             setIsErrorModalOpen(true);
@@ -227,14 +294,13 @@ export default function GenerateImagePage() {
     };
     
     const analyzeImageForStyles = async () => {
-        console.log(`--- [analyzeImageForStyles TRIGGERED] ---`);
         if (!originalImage) return;
 
         setIsAnalyzingStyles(true);
         setError(null);
         setUserApiError(null);
 
-        const isUsingUserKey = useOwnApiKey;
+        const isUsingUserKey = useOwnApiKey && apiKeyStatus.isSet;
         
         try {
             setLoadingMessage('Menganalisis gambar...');
@@ -245,13 +311,12 @@ export default function GenerateImagePage() {
                     action: 'analyze',
                     imageDataUrl: originalImage,
                     useOwnApiKey: isUsingUserKey,
-                    userApiKey: isUsingUserKey ? localStorage.getItem('user_gemini_api_key') : null,
-                })
+                }),
             });
 
-            const result = await response.json();
+            const result = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(result.message || 'Gagal menganalisis gambar.');
+                throw { message: result.message || 'Gagal menganalisis gambar.', code: result.code };
             }
             
             const { category, subject } = result;
@@ -375,7 +440,6 @@ export default function GenerateImagePage() {
     }, []);
 
     const handleGenerate = async () => {
-        console.log(`--- [handleGenerate TRIGGERED] ---`);
         if (!originalImage || !appData) {
             setError("Silakan unggah gambar terlebih dahulu.");
             setIsErrorModalOpen(true);
@@ -391,11 +455,9 @@ export default function GenerateImagePage() {
         setError(null);
         setUserApiError(null);
 
-        const isUsingUserKey = useOwnApiKey;
-        console.log(`- Mode: ${isUsingUserKey ? 'USER KEY' : 'DEV KEY'}`);
+        const isUsingUserKey = useOwnApiKey && apiKeyStatus.isSet;
 
         if (!isUsingUserKey) {
-            console.log(`[CREDIT CHECK] Current credits: ${appData.user.credits}. Cost: 1.`);
             if (appData.user.credits < 1) {
                 setError("Kredit Anda tidak mencukupi untuk membuat gambar.");
                 setIsErrorModalOpen(true);
@@ -417,7 +479,6 @@ export default function GenerateImagePage() {
                 detectedCategory,
                 isolateProduct,
                 useOwnApiKey: isUsingUserKey,
-                userApiKey: isUsingUserKey ? localStorage.getItem('user_gemini_api_key') : null,
             };
 
             const response = await fetch('/api/generate/image', {
@@ -425,11 +486,11 @@ export default function GenerateImagePage() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(apiBody),
             });
-            
-            const result = await response.json();
+
+            const result = await response.json().catch(() => ({}));
 
             if (!response.ok) {
-                throw new Error(result.message || 'Gagal menghasilkan gambar.');
+                throw { message: result.message || 'Gagal menghasilkan gambar.', code: result.code };
             }
 
             const { editedImageUrl, fullPrompt, jobId, status } = result;
@@ -440,10 +501,9 @@ export default function GenerateImagePage() {
                 const newTitle = detectedSubject ? `Proyek ${detectedSubject}` : `Proyek Gambar AI ${new Date().toLocaleTimeString()}`;
                 setProjectTitle(newTitle);
                 setFullPromptForSaving(fullPrompt);
-                
+
                 if (!isUsingUserKey) {
-                    handleCreditDeduction(1);
-                    console.log("[CREDIT] Deduction successful for image generation.");
+                    void refreshAppData();
                 }
 
                 // Auto-save project upon successful generation
@@ -479,17 +539,7 @@ export default function GenerateImagePage() {
         setError(null);
         setUserApiError(null);
 
-        const isUsingUserKey = useOwnApiKey;
-        
-        if (!isUsingUserKey) {
-            console.log(`[CREDIT CHECK] Current credits: ${appData.user.credits}. Cost: 1.`);
-            if (appData.user.credits < 1) {
-                setError("Kredit Anda tidak mencukupi untuk membuat caption.");
-                setIsErrorModalOpen(true);
-                setIsCaptionLoading(false);
-                return;
-            }
-        }
+        const isUsingUserKey = useOwnApiKey && apiKeyStatus.isSet;
         
         try {
             const response = await fetch('/api/generate/caption', {
@@ -498,21 +548,20 @@ export default function GenerateImagePage() {
                 body: JSON.stringify({
                     imageDataUrl: editedImage,
                     useOwnApiKey: isUsingUserKey,
-                    userApiKey: isUsingUserKey ? localStorage.getItem('user_gemini_api_key') : null,
                 })
             });
 
-            const result = await response.json();
+            const result = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(result.message || "Gagal membuat caption.");
+                throw { message: result.message || "Gagal membuat caption.", code: result.code };
             }
-            
+
             setGeneratedCaption(result.caption);
-            
+
             if (!isUsingUserKey) {
-                handleCreditDeduction(1);
-                console.log("[CREDIT] Deduction successful for caption generation.");
+                void refreshAppData();
             }
+
         } catch (err) {
             handleGenericError(err, isUsingUserKey);
         } finally {
@@ -597,7 +646,7 @@ export default function GenerateImagePage() {
     }
 
     const isGenerateDisabled = isLoading || !originalImage || isAnalyzingStyles;
-    const isCaptionDisabled = isCaptionLoading || (!useOwnApiKey && appData.user.credits < 1);
+    const isCaptionDisabled = isCaptionLoading || !editedImage;
 
     return (
         <>
@@ -773,7 +822,7 @@ export default function GenerateImagePage() {
                              </div>
                         )}
 
-                        {appData.userApiKeyStatus?.isSet && (
+                        {apiKeyStatus.isSet && (
                             <div className="p-3 bg-blue-50 rounded-lg">
                                 <label htmlFor="use-own-api-key-toggle" className="flex items-center justify-between w-full cursor-pointer">
                                     <span className="text-sm font-semibold text-[#0D47A1] pr-4">
@@ -806,7 +855,7 @@ export default function GenerateImagePage() {
                             ) : (
                                 <>
                                     <SparklesIcon className="w-5 h-5 mr-2" />
-                                    <span>{`4. Generate (${useOwnApiKey && appData.userApiKeyStatus?.isSet ? 'Tanpa Kredit' : '1 Kredit'})`}</span>
+                                    <span>{`4. Generate (${useOwnApiKey && apiKeyStatus.isSet ? 'Tanpa Kredit' : '1 Kredit'})`}</span>
                                 </>
                             )}
                         </button>
@@ -891,7 +940,7 @@ export default function GenerateImagePage() {
                                                 ) : (
                                                     <>
                                                         <TextIcon className="w-4 h-4 mr-2" />
-                                                        Buat Caption ({useOwnApiKey && appData.userApiKeyStatus?.isSet ? 'Gratis' : '1 Kredit'})
+                                                        Buat Caption ({useOwnApiKey && apiKeyStatus.isSet ? 'Gratis' : '1 Kredit'})
                                                     </>
                                                 )}
                                             </button>
