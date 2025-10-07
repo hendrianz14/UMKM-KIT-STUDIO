@@ -126,16 +126,11 @@ export async function getDashboardData(): Promise<AppData | null> {
   const projects: Project[] = (projectsRaw ?? []).map((p: ProjectRow) => ({
     id: Number(p.id),
     title: p.title,
-    type:
-      p.type === "image"
-        ? "Gambar AI"
-        : p.type === "caption"
-        ? "Caption AI"
-        : p.type === "video"
-        ? "Video AI"
-        : String(p.type ?? ""),
-    imageUrl: p.image_url ?? null,
+    type: p.type as 'image' | 'caption' | 'video',
+    imageUrl: p.image_url ?? "",
     user_id: p.user_id,
+    caption: "",
+    aspectRatio: "1:1",
   }));
 
   // credit history (limit 20)

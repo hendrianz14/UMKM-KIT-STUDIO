@@ -20,9 +20,16 @@ export interface DashboardStatsData {
 export interface Project {
   id: number;
   title: string;
-  type: string;       // "Gambar AI" | "Caption AI" | "Video AI"
-  imageUrl: string | null;
-  user_id: string;
+  imageUrl: string;
+  caption: string;
+  aspectRatio: string;
+  promptDetails?: string;
+  type: 'image' | 'caption' | 'video';
+  promptFull?: string;
+  // FIX: Add missing properties to align with usage in generateimage page.
+  jobId?: string;
+  userId?: string;
+  status?: string;
 }
 
 export interface CreditHistoryItem {
@@ -39,4 +46,7 @@ export interface AppData {
   dashboardStats: DashboardStatsData;
   projects: Project[];
   creditHistory: CreditHistoryItem[];
+  userApiKeyStatus?: {
+    isSet: boolean;
+  };
 }

@@ -12,18 +12,28 @@ export async function POST(req: Request) {
   const password = String(form.get("password") || "");
   const requestedRedirect = String(form.get("redirect") || "/dashboard");
   const redirectPath = requestedRedirect.startsWith("/") ? requestedRedirect : "/dashboard";
+  const requestUrl = new URL(req.url);
 
   if (!email || !password) {
-    return NextResponse.json(INVALID_RESPONSE, { status: 401 });
+    return redirectWithError(requestUrl, redirectPath, INVALID_RESPONSE.error);
   }
 
-  const successResponse = NextResponse.json({ ok: true, redirect: redirectPath });
+  const redirectUrl = new URL(redirectPath, requestUrl.origin);
+  const successResponse = NextResponse.redirect(redirectUrl, 303);
   const supabase = await supabaseRoute(successResponse);
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return NextResponse.json(INVALID_RESPONSE, { status: 401 });
+    const message = error.message?.trim() || INVALID_RESPONSE.error;
+    return redirectWithError(requestUrl, redirectPath, message);
   }
 
   return successResponse;
+}
+
+function redirectWithError(requestUrl: URL, redirectPath: string, message: string) {
+  const errorUrl = new URL("/sign-in", requestUrl.origin);
+  errorUrl.searchParams.set("error", message);
+  errorUrl.searchParams.set("redirect", redirectPath);
+  return NextResponse.redirect(errorUrl, 303);
 }

@@ -1,7 +1,9 @@
-// components/sidebar.tsx
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import {
   HomeIcon,
   GenerateIcon,
@@ -14,18 +16,19 @@ import {
   ImageIcon,
   TextIcon,
   VideoIcon,
-} from '../lib/icons';
+} from '../lib/constants';
 
 interface NavItemProps {
   icon: React.ReactNode;
   label: string;
+  href?: string;
   active?: boolean;
   hasDropdown?: boolean;
   onClick?: () => void;
   isDropdownOpen?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon, label, active = false, hasDropdown = false, onClick, isDropdownOpen }) => {
+const NavItem: React.FC<NavItemProps> = ({ icon, label, href, active = false, hasDropdown = false, onClick, isDropdownOpen }) => {
   const baseClasses = "flex items-center w-full px-4 py-3 text-sm rounded-lg transition-colors duration-200 text-left";
   const activeClasses = active ? "bg-[#1565C0] text-white" : "text-blue-200 hover:bg-[#1565C0] hover:text-white";
   const finalClasses = `${baseClasses} ${activeClasses}`;
@@ -38,21 +41,20 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, active = false, hasDropd
     </>
   );
 
-  if (onClick) {
+  if (href) {
     return (
-      <button onClick={onClick} className={finalClasses}>
+      <Link href={href} className={finalClasses} onClick={onClick}>
         {content}
-      </button>
+      </Link>
     );
   }
 
   return (
-    <a href="#" className={finalClasses}>
+    <button onClick={onClick} className={finalClasses}>
       {content}
-    </a>
+    </button>
   );
 };
-
 
 interface SidebarProps {
   isOpen: boolean;
@@ -60,8 +62,20 @@ interface SidebarProps {
 }
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-  const [isGenerateOpen, setIsGenerateOpen] = useState(false);
-  
+  const pathname = usePathname();
+  const [isGenerateOpen, setIsGenerateOpen] = useState(pathname.startsWith('/generateimage'));
+
+  useEffect(() => {
+    if (pathname.startsWith('/generateimage')) {
+      setIsGenerateOpen(true);
+    }
+  }, [pathname]);
+
+  const isActive = (path: string) => {
+    if (path === '/') return pathname === path;
+    return pathname.startsWith(path);
+  }
+
   return (
     <aside
       className={`
@@ -79,7 +93,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         </button>
       </div>
       <nav className="flex-1 space-y-2">
-        <NavItem icon={<HomeIcon className="w-5 h-5" />} label="Dashboard" active />
+        <NavItem 
+          icon={<HomeIcon className="w-5 h-5" />} 
+          label="Dashboard" 
+          active={isActive('/')} 
+          href="/"
+          onClick={onClose}
+        />
         
         <div>
           <NavItem 
@@ -92,7 +112,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <div className={`grid transition-all duration-300 ease-in-out ${isGenerateOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
             <div className="overflow-hidden">
                 <div className="pt-2 pl-6 space-y-1">
-                  <NavItem icon={<ImageIcon className="w-5 h-5" />} label="Gambar AI" />
+                  <NavItem 
+                    icon={<ImageIcon className="w-5 h-5" />} 
+                    label="Gambar AI" 
+                    active={isActive('/generateimage')}
+                    href="/generateimage"
+                    onClick={onClose}
+                  />
                   <NavItem icon={<TextIcon className="w-5 h-5" />} label="Caption AI" />
                   <NavItem icon={<VideoIcon className="w-5 h-5" />} label="Video AI" />
                 </div>
@@ -103,7 +129,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
         <NavItem icon={<GalleryIcon className="w-5 h-5" />} label="Galeri" />
         <NavItem icon={<EditorIcon className="w-5 h-5" />} label="Editor" />
         <NavItem icon={<HistoryIcon className="w-5 h-5" />} label="History" />
-        <NavItem icon={<SettingsIcon className="w-5 h-5" />} label="Settings" />
+        <NavItem 
+          icon={<SettingsIcon className="w-5 h-5" />} 
+          label="Settings" 
+          active={isActive('/settings')}
+          href="/settings"
+          onClick={onClose}
+        />
       </nav>
     </aside>
   );

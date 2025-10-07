@@ -1,0 +1,158 @@
+
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+
+interface AuthOptions {
+    useOwnApiKey: boolean;
+    userApiKey: string | null;
+}
+
+import { GenerationConfig } from "@google/genai";
+
+interface GenerateContentBody {
+    model?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    contents: any;
+    config?: GenerationConfig;
+}
+
+interface GenerateImagesBody {
+    model: string;
+    prompt: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    config?: any;
+}
+
+type ApiBody = GenerateContentBody | GenerateImagesBody;
+
+export async function authenticatedApiCall(
+    modelName: string,
+    body: ApiBody,
+    authOptions: AuthOptions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<GenerateContentResponse | any> { // Can return different response types
+    const { useOwnApiKey, userApiKey } = authOptions;
+    
+    let apiKey: string | undefined;
+
+    if (useOwnApiKey && userApiKey) {
+        apiKey = userApiKey;
+    } else {
+        apiKey = process.env.API_KEY;
+    }
+
+    if (!apiKey) {
+        throw new Error('API key is missing. Please provide your own key or ensure the server has one configured.');
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    const model = body.model || modelName;
+
+    if (model.startsWith('imagen')) {
+        if ('prompt' in body) {
+            const response = await ai.models.generateImages({
+                model,
+                prompt: body.prompt,
+                config: body.config,
+            });
+            return response;
+        } else {
+            throw new Error("The 'prompt' property is missing for the imagen model.");
+        }
+    } else if (model.startsWith('gemini')) {
+        if ('contents' in body) {
+            const response: GenerateContentResponse = await ai.models.generateContent({
+                model,
+                contents: body.contents,
+                config: body.config,
+            });
+            return response;
+        } else {
+            throw new Error("The 'contents' property is missing for the gemini model.");
+        }
+    } else {
+        throw new Error(`Unsupported model family for: ${model}`);
+    }
+}
+
+// --- START: PROFESSIONAL PROMPT LIBRARY (THE BRAIN) ---
+export const professionalPromptLibrary = {
+    style: {
+        'Cinematic': "Emulate a cinematic film still. Utilize dramatic, high-contrast lighting, a shallow depth of field to create bokeh, and apply professional color grading, often with teal and orange tones, to evoke a specific emotion.",
+        'Minimalist': "Create a minimalist aesthetic by focusing on simplicity, negative space, and a limited color palette. The composition must be clean, uncluttered, and highlight the subject's essential form.",
+        'Vintage': "Recreate the look of a vintage photograph from the 1970s. Apply a warm, slightly faded color treatment, add subtle film grain, and use lighting characteristic of that era.",
+        'Dark & Moody': "Use dramatic, low-key lighting (chiaroscuro) with deep shadows and selective highlights to create a mysterious and atmospheric mood. Emphasize texture and form.",
+        'Clean & Bright': "Produce a high-key image with bright, airy lighting, soft shadows, and a clean, vibrant color palette. The scene should feel fresh, positive, and full of light.",
+        'Food Porn': "An extreme close-up, highly detailed, and appetizing shot. Emphasize textures like melting, dripping, or glistening elements. Use vibrant, saturated colors and dramatic lighting to make the food look irresistible.",
+        'Hero Shot': "Create a dramatic 'hero shot' of the product. It should be presented at a slightly low angle to make it look imposing and iconic. Lighting should be dramatic and the focus should be sharp on the product.",
+        'Abstract': "Create an abstract interpretation of the subject. Focus on form, color, and texture rather than a literal representation. Use unconventional angles, macro shots, and creative lighting to deconstruct the subject into its basic visual elements.",
+        'Rustic': "Create a warm and authentic rustic aesthetic. Use natural materials like old wood, rough linen, and iron tableware. Lighting should be soft and natural, and food styling should feel simple and unpretentious.",
+        'Splash': "Capture a dynamic high-speed action shot. Show liquid splashing or being poured with motion frozen in time. Lighting should be sharp to highlight every droplet and liquid texture.",
+        'Lifestyle': "Present the product in a natural and aspirational everyday context. The image should tell a story and include relevant human or environmental elements to create an authentic atmosphere.",
+        'Fashion': "Create an editorial fashion photograph. Focus on the clothing and styling, with strong and expressive poses. The background and lighting should complement the garments, often in a dramatic or conceptual way.",
+        'Fine Art': "Produce an artistic and conceptual portrait, not just a representation. Use symbolism, unusual lighting, and careful composition to convey a deeper idea or emotion.",
+        'Candid': "Capture a candid, un-posed moment. The subject should appear natural and unaware of the camera, creating a sense of authenticity and spontaneity.",
+        'Headshot': "Create a professional headshot. The primary focus is on the face, typically from the shoulders up. Lighting should be flattering and the background neutral, with a confident and approachable expression.",
+        'Epic': "Capture a majestic and expansive landscape. Use a wide-angle lens, dramatic scale (e.g., a small person in a large landscape), and breathtaking light (like a storm or sunrise) to create a sense of awe.",
+        'Long Exposure': "Use a long exposure technique to blur moving elements like water or clouds, creating a smooth, dreamlike effect. Stationary elements should remain sharp.",
+        'Infrared': "Simulate infrared photography. Foliage should appear bright white, skies become dark, and contrast is high, creating a surreal, otherworldly look.",
+        'Aerial': "Capture the scene from an aerial perspective, as if from a drone or airplane. Showcase patterns, textures, and a unique point of view that can only be seen from above.",
+        'Clean Catalog': "Create a clean, professional studio shot with a solid light grey or white background. The lighting should be even and soft, showcasing the product clearly without distracting shadows.",
+    },
+    lighting: {
+        'Dramatic': "Use high-contrast lighting with hard shadows to create a sense of drama and tension. The light source should be directional and sculpt the subject's features.",
+        'Soft Light': "Employ soft, diffused lighting to create gentle shadows and a flattering, smooth look. This can be achieved with a large light source like an overcast sky or a softbox.",
+        'Golden Hour': "Simulate the lighting of the golden hour (just after sunrise or before sunset). The light should be soft, warm, and directional, creating long, gentle shadows and bathing the scene in a golden hue.",
+        'Studio Light': "Replicate a professional studio lighting setup. Use controlled lighting with key, fill, and rim lights to perfectly shape the subject and separate it from the background.",
+        'Backlit': "Position the main light source behind the subject, creating a bright rim or halo effect. This should highlight the subject's silhouette and create a sense of depth and drama.",
+        'Hard Shadow': "Use a single, small, hard light source to create sharp, well-defined shadows. This adds drama, contrast, and a graphic quality to the image.",
+        'Natural Light': "Use only available natural light, such as light from a window. Create soft shadows and natural light transitions for a realistic and authentic look.",
+        'Rembrandt': "Use Rembrandt lighting technique. This is a dramatic portrait lighting setup using one light source and a reflector, characterized by a triangle of light on the subject's less illuminated cheek.",
+        'Neon': "Utilize neon lights as the primary light source. Create a futuristic, urban, or retro mood with vibrant colors from the neon signs reflecting on the subject.",
+        'Blue Hour': "Capture the scene during the blue hour (the period shortly before sunrise or after sunset). The scene should be imbued with a soft, calm, deep blue light, often contrasted with warm city lights.",
+        'Misty': "Create a mysterious atmosphere with dense fog or mist. The mist should simplify the scene, obscure details in the distance, and create layers of depth.",
+        'Dramatic Sky': "Focus on a dramatic sky as a key element. Feature menacing storm clouds, a fiery sunset, or unique cloud formations.",
+        'Ring Light': "Use a ring light to create even, almost shadowless illumination, ideal for beauty products or close-up shots. It often produces a signature circular catchlight in reflective surfaces.",
+    },
+    composition: {
+        'Close-up': "Frame the subject tightly, focusing on a specific detail to create intimacy and highlight texture. Fill the frame with the subject.",
+        'Wide Shot': "Capture a wide shot that shows the subject within its environment. This composition should establish context and a sense of scale.",
+        'Portrait': "Compose a classic portrait. The focus should be on the subject's face and expression, using techniques like a shallow depth of field to blur the background.",
+        'Top-down': "Arrange a flat lay composition viewed directly from above. The arrangement of objects must be deliberate, clean, and graphically interesting.",
+        'Rule of Thirds': "Apply the rule of thirds for a balanced and dynamic composition. Place the main subject or key points of interest off-center, along the grid lines or at their intersections.",
+        'Human Element': "Introduce a natural human element to add a sense of scale and story, such as a hand interacting with the subject (e.g., holding a cup, sprinkling garnish), but keep the focus on the main subject.",
+        '45-Degree Angle': "Shoot from a 45-degree angle, which is the most common viewpoint when eating. This composition provides depth and shows the side and top of the subject simultaneously.",
+        'Garnishes': "Focus on the details of the garnish on the drink, such as fruit slices, mint leaves, or a cocktail umbrella. Use a shallow depth of field to make the garnish sharp while the rest of the drink is slightly blurred.",
+        'Medium Shot': "Frame the subject from approximately the waist up. This composition is close enough to see facial expressions but wide enough to include some body language and environmental context.",
+        'Full Body': "Capture the subject's entire body from head to toe. This composition is great for showing fashion, posture, and the subject's interaction with their environment.",
+        'Leading Lines': "Use natural or man-made lines (like a road, river, or fence) to guide the viewer's eye through the image, usually towards a main point of focus.",
+        'Framing': "Use elements in the foreground (like tree branches, an archway, or a window) to create a natural frame around the main subject, adding depth and context.",
+        'Symmetry': "Create a symmetrically balanced composition, often using reflections in water to create a perfect mirror effect.",
+        'Isometric': "Present the product from an isometric angle. This creates a clean, graphic, flat 3D look, often used for tech products or to showcase multiple facets at once.",
+        'Group Shot': "Arrange multiple products together in a balanced and visually appealing composition. Ensure each product is clearly visible and the styling feels intentional.",
+        'Floating': "Create the effect of the product floating in mid-air. This gives a modern, clean, and dynamic look, often with a soft drop shadow underneath to ground it and give a sense of depth.",
+    },
+    mood: {
+        'Misterius': "Evoke a mysterious mood using techniques like chiaroscuro (strong contrast between light and dark), deep shadows, perhaps with elements of fog or haze, and a cooler color palette to create a sense of intrigue and the unknown.",
+        'Ceria': "Create a cheerful and happy atmosphere with bright, warm lighting, vibrant colors, and dynamic composition. The scene should feel energetic and positive.",
+        'Tenang': "Establish a calm and peaceful mood. Use soft, diffused lighting, a muted or harmonious color palette, and simple, balanced compositions.",
+        'Energik': "Generate an energetic and dynamic feel using high-contrast lighting, bold colors, diagonal lines, and a sense of motion (e.g., motion blur, dynamic angles).",
+        'Elegan': "Convey elegance and sophistication. Use clean compositions, soft and controlled lighting, a refined color palette, and a focus on high-quality textures and details.",
+        'Lezat': "Create a very appetizing visual. Focus on rich textures, ripe and saturated colors, and details like glistening sauces, melting cheese, or thin warm steam to signify the deliciousness and freshness of the dish.",
+        'Segar': "Visually display the subject's freshness. Use bright and clean lighting, vibrant and lively colors, and details like dewdrops on fruits/vegetables, or a crisp and clean texture. Avoid heavy shadows.",
+        'Hangat': "Evoke a feeling of warmth and comfort. Use a warm color palette (yellows, oranges, reds), soft lighting, and details like steam rising from a hot drink or food. The background might have a soft focus to enhance the intimate atmosphere.",
+        'Rumahan': "Create a comfortable and unpretentious homely atmosphere. Use props from natural materials like wood or rough ceramics, slightly imperfect plating to show a handmade impression, and soft natural lighting as if from a window.",
+        'Menyegarkan': "Produce a visual that feels refreshing and cooling. Emphasize details like condensation on a cold glass, liquid splashes, bubbles, and fresh fruit slices. Use a cool color palette (blues, greens, whites) and bright, clear lighting.",
+        'Santai': "Create a relaxed and informal atmosphere. Use soft natural lighting, a comfortable and not-too-busy background (like an afternoon porch or a cozy sofa), and a composition that feels natural and unstaged.",
+        'Profesional': "Create a professional and competent atmosphere. Use clean lighting, a non-distracting background (like a modern office or solid backdrop), and a pose that conveys confidence.",
+        'Intim': "Evoke a sense of closeness and intimacy. Use tight framing (close-ups), soft lighting, and focus on details of expression or gentle touch to create an emotional connection with the viewer.",
+        'Megah': "Capture a majestic and expansive scene. Use a wide-angle lens, dramatic scale (e.g., a small person in a large landscape), and breathtaking light (like a storm or sunrise) to create a sense of awe.",
+        'Damai': "Create a peaceful and serene atmosphere. Use soft light, harmonious colors, and balanced, simple compositions. The scene should feel still and quiet.",
+        'Dramatis': "Create a dramatic mood. Use high-contrast lighting, strong shadows, imposing weather conditions (like a storm), or intense, powerful colors.",
+        'Modern': "Produce a modern, clean aesthetic. Use bold lines, a limited color palette, minimalist backgrounds, and sharp, crisp lighting.",
+        'Premium': "Convey a sense of luxury and high quality. Use rich materials in the background (like marble, silk), sophisticated lighting, and an extremely sharp focus on the product's details and craftsmanship.",
+        'Fun': "Create a cheerful and fun atmosphere. Use bright, poppy colors, dynamic backgrounds, playful props, and energetic compositions.",
+        'Natural': "Present the subject in a natural environment. Use organic elements like plants, wood, or stone, and leverage natural lighting to create an authentic and grounded feel."
+    }
+};
+// --- END: PROFESSIONAL PROMPT LIBRARY ---
