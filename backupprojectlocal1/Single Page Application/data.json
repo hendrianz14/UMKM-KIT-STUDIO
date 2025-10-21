@@ -1,0 +1,34 @@
+{
+  "user": {
+    "name": "Username",
+    "email": "user@example.com",
+    "plan": "Pro",
+    "credits": 10,
+    "expiryDate": "12/10/2025"
+  },
+  "dashboardStats": {
+    "weeklyWork": 0,
+    "totalCreditsUsed": 0
+  },
+  "projects": [
+    {
+      "id": 1,
+      "title": "Campaign Musim Panas",
+      "imageUrl": "https://images.unsplash.com/photo-1509042239860-f550ce710b93?q=80&w=800&auto=format&fit=crop",
+      "caption": "Secangkir kopi hangat di pagi hari, memulai hari dengan semangat baru. #kopi #pagi #semangat",
+      "aspectRatio": "1:1",
+      "promptDetails": "{Gaya Fotografi: Cinematic}, {Pencahayaan: Golden Hour}",
+      "type": "image",
+      "promptFull": "Transform this image into a professional, high-quality photograph ready for social media. The primary photography style should be: Cinematic. Use this lighting technique: Golden Hour. The main subject must be perfectly integrated into a new background described as: a cozy coffee shop with soft morning light."
+    }
+  ],
+  "creditHistory": [
+    { "id": 1, "type": "seed", "date": "10/4/2025, 11:59:01 AM", "amount": 10000, "transactionId": 1 },
+    { "id": 2, "type": "Credit Usage", "date": "A Moment Ago", "amount": -15, "transactionId": 2 },
+    { "id": 3, "type": "Top Up", "date": "Yesterday, 3:45 PM", "amount": 500, "transactionId": 3 },
+    { "id": 4, "type": "Credit Usage", "date": "2 days ago", "amount": -50, "transactionId": 4 },
+    { "id": 5, "type": "Credit Usage", "date": "3 days ago", "amount": -25, "transactionId": 5 },
+    { "id": 6, "type": "seed", "date": "Last week", "amount": 5000, "transactionId": 6 },
+    { "id": 7, "type": "Credit Usage", "date": "Last week", "amount": -100, "transactionId": 7 }
+  ]
+}
