@@ -110,11 +110,60 @@ $$;
 
 > Penamaan kolom / tabel boleh disesuaikan selama dipetakan ke nama yang sama seperti di atas.
 
+### 8. `storefront_settings`
+
+Menyimpan konfigurasi storefront publik sesuai skema yang kamu lampirkan:
+
+```
+id uuid primary key default gen_random_uuid()
+name text not null
+slug text not null unique
+whatsapp_number text not null
+status text default 'Published'
+is_catalog_enabled boolean default true
+location_text text
+hours_text text
+created_at timestamptz default now()
+updated_at timestamptz default now()
+owner_user_id uuid references auth.users(id)
+theme jsonb
+```
+
+### 9. `products`
+
+Relasi banyak-ke-satu dengan `storefront_settings.id` melalui kolom `store_id`:
+
+```
+id uuid primary key default gen_random_uuid()
+store_id uuid not null references storefront_settings(id) on delete cascade
+name text not null
+slug text not null
+short_description text
+long_description text
+category text
+status text
+badges text[]
+images jsonb
+cover_image_id text
+price_type text
+price numeric
+strikethrough_price numeric
+variants jsonb
+specs jsonb
+faq jsonb
+pre_order_estimate text
+updated_at timestamptz
+created_at timestamptz default now()
+```
+
+Format JSON yang digunakan oleh aplikasi mengikuti struktur pada `lib/storefront/types.ts`. Kolom `images`, `variants`, `specs`, dan `faq` dapat disesuaikan selama bentuknya kompatibel dengan tipe tersebut.
+
 ## Fitur Utama
 
 - **Generate Image**: mengedit gambar produk menggunakan Gemini. Kredit sistem akan berkurang 5 poin tiap generasi bila pengguna memakai kunci bawaan.
 - **Generate Caption**: membuat caption media sosial berdasarkan topik teks maupun hasil gambar.
 - **Settings**: menyimpan kunci API Gemini milik pengguna yang disimpan di Supabase.
+- **Storefront Admin**: kelola katalog, detail produk, dan pengaturan toko melalui halaman `/storefront` (khusus setelah login).
 - **Analisa gaya otomatis**: setiap kali gambar diunggah, sistem langsung menganalisis kategori, subjek, dan rekomendasi gaya untuk mengisi opsi lanjutan.
 - **Progress bertahap**: proses generate menampilkan tahapan status (analisis gaya, penyesuaian pencahayaan, render akhir) agar pengguna mengetahui progress saat loading.
 - **Penyimpanan proyek ke Firebase**: hasil gambar disalin ke Firebase Storage dan URL publiknya disimpan ke tabel `projects`, sehingga bisa diunduh ulang kapan saja.
