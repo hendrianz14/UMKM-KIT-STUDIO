@@ -200,6 +200,7 @@ export const AppContextProvider = ({
       'generate-catalog': '/generate-caption', // fallback
       'generate-whatsapp': '/generate-caption', // fallback
       'generate-email': '/generate-caption', // fallback
+      storefront: '/storefront',
       settings: '/settings',
     };
     router.push(pathMap[page] ?? '/dashboard');

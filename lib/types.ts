@@ -79,4 +79,5 @@ export type Page =
   | "generate-catalog"
   | "generate-whatsapp"
   | "generate-email"
-  | "settings";
+  | "settings"
+  | "storefront";
