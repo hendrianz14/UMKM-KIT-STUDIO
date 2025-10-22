@@ -2,6 +2,7 @@
 'use client';
 
 import React from 'react';
+import Image from 'next/image';
 import { EditorIcon, ShareIcon } from '../lib/icons';
 import { Project } from '../lib/types';
 
@@ -14,11 +15,24 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onShareClick }) => {
   return (
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col group animate-fadeInUp">
       <div className="w-full aspect-[3/4] overflow-hidden bg-gray-50 p-3">
-        <img 
-          src={project.imageUrl} 
-          alt={project.title} 
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 rounded-lg" 
-        />
+        <div className="relative w-full h-full rounded-lg overflow-hidden">
+          {project.imageUrl ? (
+            <Image
+              src={project.imageUrl}
+              alt={project.title || 'Preview project'}
+              fill
+              sizes="(min-width: 1280px) 240px, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+              className="object-cover rounded-lg transition-transform duration-300 group-hover:scale-105"
+              loading="lazy"
+              quality={60}
+              placeholder="empty"
+            />
+          ) : (
+            <div className="flex h-full items-center justify-center rounded-lg bg-gray-100 text-sm text-gray-400">
+              Tidak ada pratinjau
+            </div>
+          )}
+        </div>
       </div>
       <div className="p-4 flex flex-col flex-grow">
         <h3 className="font-bold text-lg text-[#0D47A1] truncate">{project.title}</h3>

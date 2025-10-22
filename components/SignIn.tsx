@@ -7,7 +7,11 @@ import GoogleIcon from './ui/GoogleIcon';
 import AuthFlash from './AuthFlash';
 import RememberGoogleLinkSync from './auth/RememberGoogleLinkSync';
 
-const SignIn: React.FC = () => {
+interface SignInProps {
+  redirectTo?: string;
+}
+
+const SignIn: React.FC<SignInProps> = ({ redirectTo = '/dashboard' }) => {
   const [formData, setFormData] = useState({
     email: '',
     password: '',
@@ -108,7 +112,7 @@ const SignIn: React.FC = () => {
       </div>
 
       <form method="post" action="/api/auth/signin" onSubmit={handleSubmit} className="space-y-4">
-        <input type="hidden" name="redirect" value="/dashboard" />
+        <input type="hidden" name="redirect" value={redirectTo} />
         <div style={{ animationDelay: '200ms' }} className={isInView ? 'animate-fadeInUp' : 'opacity-0'}>
           <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
             Email Address
@@ -151,6 +155,7 @@ const SignIn: React.FC = () => {
               type="checkbox"
               checked={formData.remember}
               onChange={handleChange}
+              value="1"
               className="h-4 w-4 rounded border-gray-300 text-secondary focus:ring-secondary"
             />
             <label htmlFor="remember-me" className="ml-2 block text-sm text-gray-700">
@@ -190,7 +195,7 @@ const SignIn: React.FC = () => {
         <div className="mt-5">
           <a
             id="google-login-link"
-            href="/api/auth/oauth/google?redirect=/dashboard"
+            href={`/api/auth/oauth/google?redirect=${encodeURIComponent(redirectTo)}`}
             className="w-full inline-flex justify-center items-center py-3 px-4 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-light focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-secondary transition-all duration-300 transform hover:scale-105"
           >
             <GoogleIcon />
@@ -200,7 +205,7 @@ const SignIn: React.FC = () => {
       </div>
 
       <p className="mt-8 text-center text-sm text-gray-500">
-        Don't have an account?{' '}
+        Don&apos;t have an account?{' '}
         <a href="/sign-up" className="font-semibold leading-6 text-secondary hover:text-primary">
           Sign Up
         </a>

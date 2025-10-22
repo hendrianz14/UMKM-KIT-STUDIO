@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClientWritable } from "@/utils/supabase/server";
+import {
+  createSupabaseServerClientWritable,
+  applyRememberPreferenceCookie,
+} from "@/utils/supabase/server";
 
 export async function POST() {
   const supabase = await createSupabaseServerClientWritable();
@@ -8,9 +11,11 @@ export async function POST() {
   if (error) {
     return NextResponse.json(
       { ok: false, error: error.message || "Gagal keluar dari sesi." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 
-  return NextResponse.json({ ok: true });
+  const response = NextResponse.json({ ok: true });
+  applyRememberPreferenceCookie(response, false);
+  return response;
 }

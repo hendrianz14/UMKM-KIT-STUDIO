@@ -8,8 +8,13 @@ export default function RememberGoogleLinkSync() {
     const update = () => {
       if (!link) return;
       const u = new URL(link.href, window.location.origin);
-      if (cb?.checked) u.searchParams.set("remember", "1"); else u.searchParams.delete("remember");
-      link.href = u.pathname + "?" + u.searchParams.toString();
+      if (cb?.checked) {
+        u.searchParams.set("remember", "1");
+      } else {
+        u.searchParams.set("remember", "0");
+      }
+      const query = u.searchParams.toString();
+      link.href = query ? `${u.pathname}?${query}` : u.pathname;
     };
     update(); cb?.addEventListener("change", update);
     return () => cb?.removeEventListener("change", update);

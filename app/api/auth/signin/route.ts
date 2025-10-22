@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClientWritable } from "@/utils/supabase/server";
+import {
+  createSupabaseServerClientWritable,
+  applyRememberPreferenceCookie,
+} from "@/utils/supabase/server";
 
 const normalizeRedirect = (redirect: string) => {
   if (!redirect) return "/dashboard";
@@ -10,6 +13,12 @@ export async function POST(req: Request) {
   const form = await req.formData();
   const email = String(form.get("email") || "").trim();
   const password = String(form.get("password") || "");
+  const rememberRaw = form.get("remember");
+  const remember =
+    rememberRaw === "1" ||
+    rememberRaw === "on" ||
+    rememberRaw === "true" ||
+    rememberRaw === true;
   const requestedRedirect = String(form.get("redirect") || "/dashboard");
   const redirectPath = normalizeRedirect(requestedRedirect);
 
@@ -20,15 +29,23 @@ export async function POST(req: Request) {
     );
   }
 
-  const supabase = await createSupabaseServerClientWritable();
+  const supabase = await createSupabaseServerClientWritable({
+    persistence: remember ? "persistent" : "session",
+  });
   const { error } = await supabase.auth.signInWithPassword({ email, password });
 
   if (error) {
-    return NextResponse.json(
+    const response = NextResponse.json(
       { ok: false, error: error.message || "Kredensial tidak valid." },
       { status: 400 },
     );
+    if (!remember) {
+      applyRememberPreferenceCookie(response, false);
+    }
+    return response;
   }
 
-  return NextResponse.json({ ok: true, redirect: redirectPath });
+  const response = NextResponse.json({ ok: true, redirect: redirectPath });
+  applyRememberPreferenceCookie(response, remember);
+  return response;
 }

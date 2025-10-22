@@ -1,6 +1,10 @@
 import { createServerClient, type CookieOptions } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { applyDefaultCookieOptions } from '@/lib/supabase-server'
+import {
+  DEFAULT_PERSISTENT_MAX_AGE,
+  REMEMBER_ME_COOKIE,
+  applyDefaultCookieOptions,
+} from '@/lib/supabase-server'
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({
@@ -8,6 +12,11 @@ export async function updateSession(request: NextRequest) {
       headers: request.headers,
     },
   })
+
+  const rememberFromCookie =
+    request.cookies.get(REMEMBER_ME_COOKIE)?.value === '1'
+  const persistence = rememberFromCookie ? 'persistent' : 'session'
+  const maxAgeSeconds = DEFAULT_PERSISTENT_MAX_AGE
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -18,7 +27,11 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: CookieOptions) {
-          const cookieOptions = applyDefaultCookieOptions(options)
+          const cookieOptions = applyDefaultCookieOptions(options, {
+            action: 'set',
+            persistence,
+            persistentMaxAgeSeconds: maxAgeSeconds,
+          })
           request.cookies.set({
             name,
             value,
@@ -32,10 +45,10 @@ export async function updateSession(request: NextRequest) {
           response.cookies.set({ name, value, ...cookieOptions })
         },
         remove(name: string, options: CookieOptions) {
-          const cookieOptions = applyDefaultCookieOptions({
-            ...options,
-            maxAge: 0,
-          })
+          const cookieOptions = applyDefaultCookieOptions(
+            { ...options, maxAge: 0 },
+            { action: 'remove' },
+          )
           request.cookies.set({
             name,
             value: '',
