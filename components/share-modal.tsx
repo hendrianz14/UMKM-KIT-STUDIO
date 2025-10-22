@@ -18,7 +18,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
   const [imageAspectRatio, setImageAspectRatio] = useState('3/4');
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+    if (typeof window !== 'undefined' && 'share' in navigator && 'canShare' in navigator) {
         try {
             const dummyFile = new File([""], "dummy.txt", { type: "text/plain" });
             if (navigator.canShare({ files: [dummyFile] })) {
@@ -56,6 +56,10 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
         setTimeout(() => setCaptionCopied(false), 2500);
       });
 
+      if (!project.imageUrl) {
+        throw new Error("Gambar tidak tersedia untuk dibagikan.");
+      }
+
       const response = await fetch(project.imageUrl);
       const blob = await response.blob();
       const file = new File([blob], 'image.jpg', { type: blob.type });
@@ -80,6 +84,10 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
 
   const handleDownloadImage = async () => {
     try {
+      if (!project.imageUrl) {
+        throw new Error('Gambar tidak tersedia untuk diunduh.');
+      }
+
       const response = await fetch(project.imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -94,7 +102,9 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
       document.body.removeChild(a);
     } catch (downloadError) {
       console.error('Error downloading image:', downloadError);
-      window.open(project.imageUrl, '_blank');
+      if (project.imageUrl) {
+        window.open(project.imageUrl, '_blank');
+      }
     }
   };
 
@@ -142,7 +152,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-full h-full flex flex-col transform transition-all animate-fadeInUp"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] flex flex-col transform transition-all animate-fadeInUp overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
@@ -160,9 +170,9 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
         <div className="flex-grow p-6 text-center overflow-y-auto">
             <div className="mb-4">
                 <img 
-                    src={project.imageUrl} 
+                    src={project.imageUrl ?? ''} 
                     alt={project.title} 
-                    className="w-full object-contain rounded-lg mx-auto shadow-md"
+                    className="w-full max-h-[45vh] object-contain rounded-lg mx-auto shadow-md"
                     style={{ 
                         aspectRatio: imageAspectRatio
                     }}

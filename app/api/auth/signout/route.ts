@@ -1,6 +1,5 @@
 import { NextResponse } from "next/server";
-import { clearSupabaseAuthCookies } from "@/lib/supabase-auth-cookies";
-import { createSupabaseServerClientWritable } from "@/utils/supabase/server";
+import { createSupabaseServerClientWritable } from "@/lib/supabase-server";
 
 export async function POST() {
   const supabase = await createSupabaseServerClientWritable();
@@ -12,8 +11,6 @@ export async function POST() {
       { status: 500 }
     );
   }
-
-  clearSupabaseAuthCookies();
 
   return NextResponse.json({ ok: true });
 }

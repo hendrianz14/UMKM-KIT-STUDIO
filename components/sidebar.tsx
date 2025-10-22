@@ -1,9 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import React, { useState } from 'react';
 import {
   HomeIcon,
   GenerateIcon,
@@ -15,20 +13,39 @@ import {
   XIcon,
   ImageIcon,
   TextIcon,
-  VideoIcon,
-} from '../lib/icons';
+  StoreIcon,
+  BoxIcon,
+  HelpCircleIcon,
+  BarChartIcon,
+  MessageCircleIcon,
+  DollarSignIcon,
+  CalendarIcon,
+  UsersIcon,
+  PieChartIcon,
+  Share2Icon,
+  PaletteIcon,
+  CreditIcon,
+  SparklesIcon,
+  MessageSquareIcon,
+  PlayIcon,
+  InboxIcon,
+  FileTextIcon,
+  SlashIcon,
+  TargetIcon,
+  KeyIcon,
+} from '@/lib/constants';
+import { Page } from '@/lib/types';
 
 interface NavItemProps {
   icon: React.ReactNode;
   label: string;
-  href?: string;
   active?: boolean;
   hasDropdown?: boolean;
   onClick?: () => void;
   isDropdownOpen?: boolean;
 }
 
-const NavItem: React.FC<NavItemProps> = ({ icon, label, href, active = false, hasDropdown = false, onClick, isDropdownOpen }) => {
+const NavItem: React.FC<NavItemProps> = ({ icon, label, active = false, hasDropdown = false, onClick, isDropdownOpen }) => {
   const baseClasses = "flex items-center w-full px-4 py-3 text-sm rounded-lg transition-colors duration-200 text-left";
   const activeClasses = active ? "bg-[#1565C0] text-white" : "text-blue-200 hover:bg-[#1565C0] hover:text-white";
   const finalClasses = `${baseClasses} ${activeClasses}`;
@@ -41,20 +58,21 @@ const NavItem: React.FC<NavItemProps> = ({ icon, label, href, active = false, ha
     </>
   );
 
-  if (href) {
+  if (onClick) {
     return (
-      <Link href={href} className={finalClasses} onClick={onClick}>
+      <button onClick={onClick} className={finalClasses}>
         {content}
-      </Link>
+      </button>
     );
   }
 
   return (
-    <button onClick={onClick} className={finalClasses}>
+    <a href="#" className={finalClasses}>
       {content}
-    </button>
+    </a>
   );
 };
+
 
 interface SidebarProps {
   isOpen: boolean;
@@ -63,8 +81,23 @@ interface SidebarProps {
   onNavigate: (page: Page) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
-  const [isGenerateOpen, setIsGenerateOpen] = useState(false);
+const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavigate }) => {
+    const isContentPage = [
+    'generate-image', 
+    'textgenerator', 
+    'generate-caption', 
+    'generate-catalog', 
+    'generate-whatsapp', 
+    'generate-email'
+  ].includes(currentPage);
+
+  const [isContentStudioOpen, setIsContentStudioOpen] = useState(isContentPage);
+  const [isStorefrontOpen, setIsStorefrontOpen] = useState(false);
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [isSalesOpen, setIsSalesOpen] = useState(false);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [isCrmOpen, setIsCrmOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(currentPage === 'settings');
   
   return (
     <aside
@@ -82,9 +115,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <XIcon className="w-6 h-6" />
         </button>
       </div>
-      <nav className="flex-1 space-y-2">
-        <NavItem icon={<HomeIcon className="w-5 h-5" />} label="Dashboard" active />
+      <nav className="flex-1 space-y-1 overflow-y-auto">
+        <NavItem 
+          icon={<HomeIcon className="w-5 h-5" />} 
+          label="Dashboard" 
+          active={currentPage === 'dashboard'} 
+          onClick={() => onNavigate('dashboard')}
+        />
         
+        {/* Content Studio Dropdown Section */}
         <div>
           <NavItem 
             icon={<GenerateIcon className="w-5 h-5" />} 
@@ -174,18 +213,77 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           <div className={`grid transition-all duration-300 ease-in-out ${isSalesOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
             <div className="overflow-hidden">
                 <div className="pt-2 pl-6 space-y-1">
-                  <NavItem icon={<ImageIcon className="w-5 h-5" />} label="Gambar AI" />
-                  <NavItem icon={<TextIcon className="w-5 h-5" />} label="Caption AI" />
-                  <NavItem icon={<VideoIcon className="w-5 h-5" />} label="Video AI" />
+                  <NavItem icon={<InboxIcon className="w-5 h-5" />} label="Inquiries" />
+                  <NavItem icon={<FileTextIcon className="w-5 h-5" />} label="Quote" />
                 </div>
             </div>
           </div>
         </div>
         
-        <NavItem icon={<GalleryIcon className="w-5 h-5" />} label="Galeri" />
-        <NavItem icon={<EditorIcon className="w-5 h-5" />} label="Editor" />
-        <NavItem icon={<HistoryIcon className="w-5 h-5" />} label="History" />
-        <NavItem icon={<SettingsIcon className="w-5 h-5" />} label="Settings" />
+        {/* Booking-Lite Dropdown Section */}
+        <div>
+          <NavItem 
+            icon={<CalendarIcon className="w-5 h-5" />} 
+            label="Booking-Lite" 
+            hasDropdown 
+            onClick={() => setIsBookingOpen(!isBookingOpen)}
+            isDropdownOpen={isBookingOpen}
+          />
+          <div className={`grid transition-all duration-300 ease-in-out ${isBookingOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+            <div className="overflow-hidden">
+                <div className="pt-2 pl-6 space-y-1">
+                  <NavItem icon={<CalendarIcon className="w-5 h-5" />} label="Reservations" />
+                  <NavItem icon={<SettingsIcon className="w-5 h-5" />} label="Settings" />
+                  <NavItem icon={<SlashIcon className="w-5 h-5" />} label="Blackouts" />
+                </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Customers (CRM) Dropdown Section */}
+        <div>
+          <NavItem 
+            icon={<UsersIcon className="w-5 h-5" />} 
+            label="Customers (CRM)" 
+            hasDropdown 
+            onClick={() => setIsCrmOpen(!isCrmOpen)}
+            isDropdownOpen={isCrmOpen}
+          />
+          <div className={`grid transition-all duration-300 ease-in-out ${isCrmOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+            <div className="overflow-hidden">
+                <div className="pt-2 pl-6 space-y-1">
+                  <NavItem icon={<UsersIcon className="w-5 h-5" />} label="Customers" />
+                  <NavItem icon={<TargetIcon className="w-5 h-5" />} label="Segments" />
+                </div>
+            </div>
+          </div>
+        </div>
+        
+        <NavItem icon={<PieChartIcon className="w-5 h-5" />} label="Analytics" />
+        
+        {/* Settings Dropdown Section */}
+        <div>
+          <NavItem 
+            icon={<SettingsIcon className="w-5 h-5" />} 
+            label="Settings" 
+            hasDropdown
+            onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+            isDropdownOpen={isSettingsOpen}
+            active={currentPage === 'settings'}
+          />
+           <div className={`grid transition-all duration-300 ease-in-out ${isSettingsOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+            <div className="overflow-hidden">
+                <div className="pt-2 pl-6 space-y-1">
+                  <NavItem icon={<Share2Icon className="w-5 h-5" />} label="Channels" />
+                  <NavItem icon={<StoreIcon className="w-5 h-5" />} label="Storefront" />
+                  <NavItem icon={<CalendarIcon className="w-5 h-5" />} label="Reservasi" />
+                  <NavItem icon={<PaletteIcon className="w-5 h-5" />} label="Brand" />
+                  <NavItem icon={<CreditIcon className="w-5 h-5" />} label="Billing" />
+                  <NavItem icon={<UsersIcon className="w-5 h-5" />} label="Team" onClick={() => onNavigate('settings')} />
+                </div>
+            </div>
+          </div>
+        </div>
       </nav>
     </aside>
   );

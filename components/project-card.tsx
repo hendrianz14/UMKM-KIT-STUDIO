@@ -15,7 +15,7 @@ const ProjectCard: React.FC<ProjectCardProps> = ({ project, onShareClick }) => {
     <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden flex flex-col group animate-fadeInUp">
       <div className="w-full aspect-[3/4] overflow-hidden bg-gray-50 p-3">
         <img 
-          src={project.imageUrl} 
+          src={project.imageUrl ?? ''} 
           alt={project.title} 
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300 rounded-lg" 
         />

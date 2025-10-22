@@ -1,4 +1,4 @@
-import { createSupabaseServerClientWritable } from '@/utils/supabase/server';
+import { createSupabaseServerClientWritable } from '@/lib/supabase-server';
 import { Preset } from './types';
 
 export async function getPresets(userId: string): Promise<Preset[]> {
