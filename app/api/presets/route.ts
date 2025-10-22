@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createSupabaseServerClientWritable, createSupabaseServerClientReadOnly } from '@/lib/supabase-server';
+import { createSupabaseServerClientWritable, createSupabaseServerClientReadOnly } from '@/utils/supabase/server';
 import { getPresets, createPreset, deletePreset } from '@/lib/presets';
 
 export async function GET(req: NextRequest) {

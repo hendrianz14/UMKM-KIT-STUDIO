@@ -35,21 +35,19 @@ export async function POST(request: Request) {
 
         if (useOwnApiKey) {
             const keyInfo = await fetchUserApiKey(supabase, user.id);
-            const rawKey = keyInfo.rawKey;
-            if (!rawKey) {
+            if (!keyInfo.rawKey) {
                 return NextResponse.json({ error: 'Kunci API Anda belum tersimpan.' }, { status: 400 });
             }
-            apiKey = rawKey;
+            apiKey = keyInfo.rawKey;
             const validation = await validateApiKey(apiKey);
             if (!validation.valid) {
                 return NextResponse.json({ error: validation.error }, { status: 400 });
             }
         } else {
-            const systemApiKey = process.env.GEMINI_API_KEY;
-            if (!systemApiKey) {
+            apiKey = process.env.GEMINI_API_KEY!;
+            if (!apiKey) {
                 return NextResponse.json({ error: "Kunci API sistem tidak dikonfigurasi." }, { status: 500 });
             }
-            apiKey = systemApiKey;
         }
 
         const ai = new GoogleGenAI({ apiKey });
@@ -79,7 +77,7 @@ export async function POST(request: Request) {
         });
 
         // PERBAIKAN 3: Menggunakan `response.text` dan parsing yang aman
-        const jsonText = response.text ?? '';
+        const jsonText = response.text;
         let result: { caption: string };
 
         try {

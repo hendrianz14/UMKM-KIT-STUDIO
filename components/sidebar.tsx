@@ -92,7 +92,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
   ].includes(currentPage);
 
   const [isContentStudioOpen, setIsContentStudioOpen] = useState(isContentPage);
-  const [isStorefrontOpen, setIsStorefrontOpen] = useState(currentPage === 'storefront');
+  const [isStorefrontOpen, setIsStorefrontOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [isSalesOpen, setIsSalesOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
@@ -169,14 +169,13 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
             hasDropdown 
             onClick={() => setIsStorefrontOpen(!isStorefrontOpen)}
             isDropdownOpen={isStorefrontOpen}
-            active={currentPage === 'storefront'}
           />
           <div className={`grid transition-all duration-300 ease-in-out ${isStorefrontOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
             <div className="overflow-hidden">
                 <div className="pt-2 pl-6 space-y-1">
-                  <NavItem icon={<BoxIcon className="w-5 h-5" />} label="Products" onClick={() => onNavigate('storefront')} active={currentPage === 'storefront'} />
-                  <NavItem icon={<HelpCircleIcon className="w-5 h-5" />} label="FAQ" onClick={() => onNavigate('storefront')} />
-                  <NavItem icon={<BarChartIcon className="w-5 h-5" />} label="Overview" onClick={() => onNavigate('storefront')} />
+                  <NavItem icon={<BoxIcon className="w-5 h-5" />} label="Products" />
+                  <NavItem icon={<HelpCircleIcon className="w-5 h-5" />} label="FAQ" />
+                  <NavItem icon={<BarChartIcon className="w-5 h-5" />} label="Overview" />
                 </div>
             </div>
           </div>
@@ -276,7 +275,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
             <div className="overflow-hidden">
                 <div className="pt-2 pl-6 space-y-1">
                   <NavItem icon={<Share2Icon className="w-5 h-5" />} label="Channels" />
-                  <NavItem icon={<StoreIcon className="w-5 h-5" />} label="Storefront" onClick={() => onNavigate('storefront')} />
+                  <NavItem icon={<StoreIcon className="w-5 h-5" />} label="Storefront" />
                   <NavItem icon={<CalendarIcon className="w-5 h-5" />} label="Reservasi" />
                   <NavItem icon={<PaletteIcon className="w-5 h-5" />} label="Brand" />
                   <NavItem icon={<CreditIcon className="w-5 h-5" />} label="Billing" />

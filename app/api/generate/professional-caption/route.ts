@@ -19,7 +19,7 @@ const generateProfessionalCaption = async (apiKey: string, image: string, subjec
     - Include 3-5 relevant and popular hashtags.
     - The caption should be no more than 2 sentences.`;
 
-    const response = await (ai.models.generateContent as any)({
+    const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: [
             { inlineData: { mimeType, data: base64Data } },
@@ -28,7 +28,7 @@ const generateProfessionalCaption = async (apiKey: string, image: string, subjec
         systemInstruction: {
             parts: [{ text: systemPrompt }],
         },
-    } as unknown as Record<string, unknown>);
+    });
 
     const caption = extractTextFromResponse(response).trim();
 

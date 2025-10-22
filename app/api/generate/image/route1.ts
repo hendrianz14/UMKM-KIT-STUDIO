@@ -1,12 +1,13 @@
-
 import { randomUUID } from 'crypto';
 import { NextResponse } from 'next/server';
-import { GoogleGenAI, Modality, Type } from '@google/genai';
+import { GoogleGenAI, Modality } from '@google/genai';
 import { supabaseRoute } from '@/lib/supabase-route';
 import { professionalPromptLibrary, styleEnhancements } from '@/lib/gemini';
 import { dataUrlToBlob, processImageWithCanvas, validateApiKey } from '@/lib/utils';
 import { AspectRatio, SelectedStyles } from '@/lib/types';
+import { extractTextFromResponse, findFirstInlineData } from '@/lib/gemini-response';
 import { fetchUserApiKey } from '@/lib/user-api-key.server';
+import { extractJsonFromMarkdown } from '@/lib/json-helpers';
 
 export const runtime = 'nodejs';
 
@@ -22,6 +23,7 @@ function getProfessionalDetail(
     const library = professionalPromptLibrary[category] as Record<string, string>;
     return library[key] ?? key;
 }
+
 
 export async function POST(request: Request) {
     try {
@@ -59,27 +61,39 @@ export async function POST(request: Request) {
             return NextResponse.json({ error: 'Image is required' }, { status: 400 });
         }
 
-        let apiKey: string;
+        let apiKey: string | undefined;
 
         if (useOwnApiKey) {
             const keyInfo = await fetchUserApiKey(supabase, user.id);
             if (!keyInfo.rawKey) {
-                return NextResponse.json({ error: 'Kunci API Anda belum tersimpan.' }, { status: 400 });
+                return NextResponse.json(
+                    { error: 'Kunci API Anda belum tersimpan. Silakan simpan di halaman Settings terlebih dahulu.' },
+                    { status: 400 },
+                );
             }
+
             apiKey = keyInfo.rawKey;
+
+            if (!apiKey) {
+                return NextResponse.json(
+                    { error: 'Kunci API Anda tidak valid. Mohon perbarui melalui halaman Settings.' },
+                    { status: 400 },
+                );
+            }
+
             const validation = await validateApiKey(apiKey);
             if (!validation.valid) {
                 return NextResponse.json({ error: validation.error }, { status: 400 });
             }
         } else {
-            apiKey = process.env.GEMINI_API_KEY!;
+            apiKey = process.env.GEMINI_API_KEY;
             if (!apiKey) {
                 return NextResponse.json({ error: 'Kunci API sistem tidak dikonfigurasi.' }, { status: 500 });
             }
 
             const { data: wallet, error: walletError } = await supabase
                 .from('credits_wallet')
-                .select('balance')
+                .select<{ balance: number }>('balance')
                 .eq('user_id', user.id)
                 .single();
 
@@ -88,12 +102,14 @@ export async function POST(request: Request) {
                 return NextResponse.json({ error: 'Gagal memeriksa saldo kredit.' }, { status: 500 });
             }
 
-            if (Number(wallet?.balance ?? 0) < 5) {
+            const currentBalance = Number(wallet?.balance ?? 0);
+            if (currentBalance < 5) {
                 return NextResponse.json({ error: 'Kredit Anda tidak mencukupi untuk membuat gambar.' }, { status: 402 });
             }
         }
 
         const generationId = randomUUID();
+
         const ai = new GoogleGenAI({ apiKey });
 
         const canvasImage = await processImageWithCanvas(image, aspectRatio);
@@ -105,32 +121,42 @@ export async function POST(request: Request) {
         try {
             const analysisResponse = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
-                contents: { parts: [{ inlineData: { mimeType, data: base64Data } }] },
-                config: {
-                    systemInstruction: 'You are a professional photoshoot director. Analyze the image. First, determine the most fitting professional photography style. Second, suggest a NEW, creative, and professional background that would elevate the subject. Respond ONLY with a JSON object.',
+                contents: [{ inlineData: { mimeType, data: base64Data } }],
+                generationConfig: {
                     responseMimeType: 'application/json',
                     responseSchema: {
-                        type: Type.OBJECT,
+                        type: 'OBJECT',
                         properties: {
-                            style: { type: Type.STRING },
-                            background_prompt: { type: Type.STRING },
+                            style: { type: 'STRING' },
+                            background_prompt: { type: 'STRING' },
                         },
                         required: ['style', 'background_prompt'],
                     },
                 },
+                systemInstruction: {
+                    parts: [{
+                        text: 'You are a professional photoshoot director. Analyze the image. First, determine the most fitting professional photography style. Second, suggest a NEW, creative, and professional background that would elevate the subject. Respond ONLY with a JSON object.',
+                    }],
+                },
             });
+
+            const rawAnalysisText = extractTextFromResponse(analysisResponse);
+            const analysisJson = extractJsonFromMarkdown(rawAnalysisText);
             
             let analysisResult: { style?: string; background_prompt?: string } = {};
-            try {
-                analysisResult = JSON.parse(analysisResponse.text);
-            } catch (jsonError) {
-                console.warn('Failed to parse analysis JSON:', analysisResponse.text, jsonError);
-            }
 
+            if (analysisJson) {
+                try {
+                    analysisResult = JSON.parse(analysisJson);
+                } catch (jsonError) {
+                    console.warn('Failed to parse extracted JSON:', jsonError);
+                }
+            }
+            
             analyzedStyle = analysisResult.style ?? null;
             backgroundPrompt = analysisResult.background_prompt ?? '';
         } catch (analysisError) {
-            console.warn('Failed to analyse image style, proceeding with defaults:', analysisError);
+            console.warn('Failed to analyse image style:', analysisError);
         }
 
         const selectedStyleKey = selectedStyles.style ?? analyzedStyle ?? null;
@@ -150,10 +176,14 @@ Follow these rules:
 `;
             const interactionResponse = await ai.models.generateContent({
                 model: 'gemini-2.5-flash',
-                contents: { parts: [{ text: `Describe a natural, culturally appropriate human interaction with "${detectedSubject}" in a concise phrase.` }] },
-                config: { systemInstruction: deepResearchSystemInstruction },
+                contents: [{
+                    text: `Describe a natural, culturally appropriate human interaction with "${detectedSubject}" in a concise phrase.`,
+                }],
+                systemInstruction: {
+                    parts: [{ text: deepResearchSystemInstruction }],
+                },
             });
-            const interactionText = interactionResponse.text.trim();
+            const interactionText = extractTextFromResponse(interactionResponse).trim();
             if (interactionText) {
                 compositionInstruction = interactionText;
             }
@@ -185,37 +215,24 @@ Follow these rules:
 
         const imageEditResponse = await ai.models.generateContent({
             model: 'gemini-2.5-flash-image',
-            contents: { parts: [
+            contents: [
                 { inlineData: { mimeType, data: base64Data } },
                 { text: finalPrompt },
-            ]},
-            config: {
+            ],
+            generationConfig: {
                 responseModalities: [Modality.IMAGE, Modality.TEXT],
             },
         });
 
-        let imagePart;
-        for (const part of imageEditResponse.candidates[0].content.parts) {
-            if (part.inlineData) {
-                imagePart = part;
-                break;
-            }
-        }
+        const inlineData = findFirstInlineData(imageEditResponse);
+        if (inlineData) {
+            const generatedImgSrc = `data:${inlineData.mimeType};base64,${inlineData.data}`;
 
-        if (imagePart?.inlineData) {
-            const generatedImgSrc = `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
             return NextResponse.json({ imageUrl: generatedImgSrc, finalPrompt, generationId });
         }
-        
-        let errorText = 'Tidak ada gambar yang dihasilkan oleh AI.';
-        for (const part of imageEditResponse.candidates[0].content.parts) {
-            if (part.text) {
-                errorText = part.text;
-                break;
-            }
-        }
-        throw new Error(errorText);
 
+        const errorText = extractTextFromResponse(imageEditResponse);
+        throw new Error(errorText || 'Tidak ada gambar yang dihasilkan oleh AI.');
     } catch (error) {
         console.error('Image Generation API Error:', error);
         const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';

@@ -40,10 +40,10 @@ interface AppContextType {
     userApiKeyInfo: UserApiKeyState;
     setInitialData: (data: AppData) => void;
     handleSaveProject: (newProject: Omit<Project, 'id' | 'user_id' | 'created_at'>) => Promise<Project>;
-    handleCreditDeduction: (amount: number, generationId?: string | null) => void;
+    handleCreditDeduction: (amount: number) => void;
     setSidebarOpen: (isOpen: boolean) => void;
     toggleSidebar: () => void;
-    onNavigate: (page: Page) => void;
+    onNavigate: (page: 'dashboard' | 'generate-image' | 'settings' | 'generate-caption') => void;
     setUserApiKeyInfo: (info: UserApiKeyPayload) => void;
     refreshUserApiKeyInfo: () => Promise<void>;
 }
@@ -192,18 +192,13 @@ export const AppContextProvider = ({
   };
 
   const onNavigate = (page: Page) => {
-    const pathMap: Partial<Record<Page, string>> = {
+    const pathMap: Record<Page, string> = {
       dashboard: '/dashboard',
       'generate-image': '/generate-image',
       'generate-caption': '/generate-caption',
-      textgenerator: '/textgenerator',
-      'generate-catalog': '/generate-caption', // fallback
-      'generate-whatsapp': '/generate-caption', // fallback
-      'generate-email': '/generate-caption', // fallback
-      storefront: '/storefront',
       settings: '/settings',
     };
-    router.push(pathMap[page] ?? '/dashboard');
+    router.push(pathMap[page]);
   };
 
   const value = {

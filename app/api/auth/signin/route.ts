@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { createSupabaseServerClientWritable } from "@/lib/supabase-server";
+import { createSupabaseServerClientWritable } from "@/utils/supabase/server";
 
 const normalizeRedirect = (redirect: string) => {
   if (!redirect) return "/dashboard";

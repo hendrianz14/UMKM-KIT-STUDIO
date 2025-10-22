@@ -1,6 +1,5 @@
 import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
-import { getStorage } from "firebase-admin/storage";
-import type { Bucket } from "@google-cloud/storage";
+import { getStorage, type Bucket } from "firebase-admin/storage";
 
 type FirebaseConfig = {
   projectId: string;

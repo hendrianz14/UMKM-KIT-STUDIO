@@ -20,8 +20,8 @@ export const createClient = () => {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        async get(name: string) {
-          const cookieStore = await cookies();
+        get(name: string) {
+          const cookieStore = cookies();
           return cookieStore.get(name)?.value;
         },
       },
@@ -40,22 +40,22 @@ export const createActionClient = () => {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        async get(name: string) {
-          const cookieStore = await cookies();
+        get(name: string) {
+          const cookieStore = cookies();
           return cookieStore.get(name)?.value;
         },
-        async set(name: string, value: string, options: CookieOptions) {
+        set(name: string, value: string, options: CookieOptions) {
           try {
-            const cookieStore = await cookies();
+            const cookieStore = cookies();
             cookieStore.set({ name, value, ...options, ...getCookieOptions() });
           } catch (error) {
             // This can happen if the headers are already sent.
             // In a Server Action or Route Handler, this should be rare.
           }
         },
-        async remove(name: string, options: CookieOptions) {
+        remove(name: string, options: CookieOptions) {
           try {
-            const cookieStore = await cookies();
+            const cookieStore = cookies();
             cookieStore.set({ name, value: '', ...options, ...getCookieOptions() });
           } catch (error) {
             // Same as above.
