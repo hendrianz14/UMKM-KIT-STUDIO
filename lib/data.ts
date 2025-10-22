@@ -123,33 +123,28 @@ export async function getDashboardData(): Promise<AppData | null> {
     .eq("user_id", uid)
     .single();
 
+  const { data: userApiKeyRow } = await supabase
+    .from("user_api_keys")
+    .select("updated_at")
+    .eq("user_id", uid)
+    .maybeSingle();
+
   // projects
   const { data: projectsRaw } = await supabase
     .from("projects")
     .select("id, title, type, image_url, image_storage_path, caption, aspect_ratio, prompt_details, prompt_full, user_id, created_at")
     .eq("user_id", uid)
     .order("created_at", { ascending: false })
-    .limit(12);
+    .limit(5);
 
   const projects: Project[] = (projectsRaw ?? []).map((p: ProjectRow) => ({
     id: Number(p.id),
     title: p.title,
-    type:
-      p.type === "image"
-        ? "Gambar AI"
-        : p.type === "caption"
-        ? "Caption AI"
-        : p.type === "video"
-        ? "Video AI"
-        : String(p.type ?? ""),
-    imageUrl: p.image_url ?? null,
-    imageStoragePath: p.image_storage_path ?? null,
-    caption: p.caption ?? null,
-    aspectRatio: p.aspect_ratio ?? null,
-    promptDetails: p.prompt_details ?? null,
-    promptFull: p.prompt_full ?? null,
+    type: p.type as 'image' | 'caption' | 'video',
+    imageUrl: p.image_url ?? "",
     user_id: p.user_id,
-    created_at: p.created_at ?? null,
+    caption: "",
+    aspectRatio: "1:1",
   }));
 
   // credit history (limit 20)
@@ -158,7 +153,7 @@ export async function getDashboardData(): Promise<AppData | null> {
     .select("id, user_id, reason, amount, transaction_no, created_at")
     .eq("user_id", uid)
     .order("created_at", { ascending: false })
-    .limit(20);
+    .limit(5);
 
   const creditHistory: CreditHistoryItem[] = (ledger ?? []).map((l: LedgerRow) => ({
     id: l.id,
@@ -210,5 +205,6 @@ export async function getDashboardData(): Promise<AppData | null> {
     dashboardStats: stats,
     projects,
     creditHistory,
+    userApiKeyStatus: { isSet: Boolean(userApiKeyRow) },
   };
 }

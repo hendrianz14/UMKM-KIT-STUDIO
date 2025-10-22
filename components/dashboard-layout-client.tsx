@@ -2,8 +2,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
-import Sidebar from './sidebar';
+import Sidebar from './Sidebar';
 import Header from './header';
 import FeedbackModal from './feedback-modal';
 import type { SessionUser, Page } from '../lib/types';

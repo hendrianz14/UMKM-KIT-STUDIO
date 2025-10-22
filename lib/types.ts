@@ -38,13 +38,7 @@ export interface Project {
   title: string;
   type: string;       // "Gambar AI" | "Caption AI" | "Video AI"
   imageUrl: string | null;
-  imageStoragePath?: string | null;
-  caption?: string | null;
-  aspectRatio?: string | null;
-  promptDetails?: string | null;
-  promptFull?: string | null;
   user_id: string;
-  created_at?: string | null;
 }
 
 export interface CreditHistoryItem {
@@ -61,6 +55,9 @@ export interface AppData {
   dashboardStats: DashboardStatsData;
   projects: Project[];
   creditHistory: CreditHistoryItem[];
+  userApiKeyStatus?: {
+    isSet: boolean;
+  };
 }
 
 

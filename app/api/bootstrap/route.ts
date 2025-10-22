@@ -16,3 +16,14 @@ export async function GET() {
     return NextResponse.json({ error: `Failed to load dashboard data. ${errorMessage}` }, { status: 500 });
   }
 }
+    const data = await getDashboardData();
+    if (!data) {
+      return NextResponse.json({ message: 'Tidak terautentikasi' }, { status: 401 });
+    }
+
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Failed to bootstrap app data:', error);
+    return NextResponse.json({ message: 'Internal Server Error' }, { status: 500 });
+  }
+}

@@ -18,7 +18,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
   const [imageAspectRatio, setImageAspectRatio] = useState('3/4');
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && navigator.share && navigator.canShare) {
+    if (typeof window !== 'undefined' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
         try {
             const dummyFile = new File([""], "dummy.txt", { type: "text/plain" });
             if (navigator.canShare({ files: [dummyFile] })) {

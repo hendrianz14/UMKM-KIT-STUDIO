@@ -106,3 +106,111 @@ export async function DELETE() {
         return NextResponse.json({ error: `Failed to delete API key. ${errorMessage}` }, { status: 500 });
     }
 }
+import { NextResponse } from "next/server";
+import { getAuthenticatedUser } from "@/lib/server/auth";
+import { rateLimit } from "@/lib/server/rate-limit";
+import { HttpError } from "@/lib/server/http-error";
+import {
+  censorApiKey,
+  fetchStoredApiKey,
+  removeUserApiKey,
+  upsertUserApiKey,
+} from "@/lib/server/user-api-key";
+
+const RATE_LIMIT_WINDOW_MS = 60_000;
+const GET_LIMIT = 30;
+const MUTATION_LIMIT = 10;
+
+function extractClientIp(request: Request): string {
+  const header = request.headers.get("x-forwarded-for");
+  if (header) {
+    return header.split(",")[0]?.trim() || "unknown";
+  }
+  return request.headers.get("x-real-ip") || "unknown";
+}
+
+async function guardRateLimit(
+  request: Request,
+  userId: string,
+  action: "get" | "mutate"
+) {
+  const ip = extractClientIp(request);
+  const limit = action === "get" ? GET_LIMIT : MUTATION_LIMIT;
+  const key = `${userId}:${ip}:user-api-key:${action}`;
+  const result = rateLimit(key, limit, RATE_LIMIT_WINDOW_MS);
+  if (!result.ok) {
+    throw new HttpError(429, "Terlalu banyak permintaan. Coba lagi nanti.", "rate-limit");
+  }
+}
+
+export async function GET(request: Request) {
+  try {
+    const { supabase, user } = await getAuthenticatedUser();
+    await guardRateLimit(request, user.id, "get");
+
+    const stored = await fetchStoredApiKey(supabase, user.id);
+
+    return NextResponse.json({
+      isSet: Boolean(stored),
+      maskedKey: stored ? censorApiKey(stored.decrypted) : null,
+      updatedAt: stored?.updatedAt ?? null,
+    });
+  } catch (error) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ message: error.message, code: error.code }, { status: error.status });
+    }
+    console.error("API Key GET Error:", error);
+    return NextResponse.json({ message: "Gagal memuat kunci API" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const { supabase, user } = await getAuthenticatedUser();
+    await guardRateLimit(request, user.id, "mutate");
+
+    const body = await request.json().catch(() => {
+      throw new HttpError(400, "Body harus berupa JSON valid", "request/invalid-json");
+    });
+
+    const rawKey = String(body.apiKey ?? "").trim();
+    if (!rawKey) {
+      throw new HttpError(400, "apiKey wajib diisi", "request/missing-api-key");
+    }
+
+    if (rawKey.length < 20 || rawKey.length > 200) {
+      throw new HttpError(400, "Format kunci API tidak valid", "request/invalid-api-key");
+    }
+
+    await upsertUserApiKey(supabase, user.id, rawKey);
+    const stored = await fetchStoredApiKey(supabase, user.id);
+
+    return NextResponse.json({
+      isSet: true,
+      maskedKey: censorApiKey(rawKey),
+      updatedAt: stored?.updatedAt ?? new Date().toISOString(),
+    });
+  } catch (error) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ message: error.message, code: error.code }, { status: error.status });
+    }
+    console.error("API Key POST Error:", error);
+    return NextResponse.json({ message: "Gagal menyimpan kunci API" }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: Request) {
+  try {
+    const { supabase, user } = await getAuthenticatedUser();
+    await guardRateLimit(request, user.id, "mutate");
+
+    await removeUserApiKey(supabase, user.id);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    if (error instanceof HttpError) {
+      return NextResponse.json({ message: error.message, code: error.code }, { status: error.status });
+    }
+    console.error("API Key DELETE Error:", error);
+    return NextResponse.json({ message: "Gagal menghapus kunci API" }, { status: 500 });
+  }
+}

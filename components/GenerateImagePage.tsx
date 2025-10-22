@@ -1,10 +1,11 @@
-"use client";
+
+'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { SparklesIcon, DownloadIcon, ImageIcon, UploadIcon, ChevronDownIcon, RefreshCwIcon, InfoIcon, CheckIcon, XIcon, TextIcon, PlusCircleIcon, KeyIcon, CreditIcon, TrashIcon } from '@/lib/constants';
-import { AspectRatio, Project, SavedStyle, StyleOption, SelectedStyles, Preset } from '@/lib/types';
-import { useAppContext } from '@/contexts/AppContext';
-import { getDefaultStylePresets } from '@/lib/style-presets';
+import { useRouter } from 'next/navigation';
+import { SparklesIcon, DownloadIcon, ImageIcon, UploadIcon, ChevronDownIcon, RefreshCwIcon, InfoIcon, CheckIcon, XIcon, TextIcon, PlusCircleIcon, KeyIcon, CreditIcon } from '../lib/constants';
+import { Project } from '../lib/types';
+import { useAppContext } from '../contexts/AppContext';
 
 const Spinner: React.FC<{ size?: string }> = ({ size = 'h-8 w-8' }) => (
     <svg className={`animate-spin text-[#0D47A1] ${size}`} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
@@ -20,6 +21,7 @@ const LoadingComponent: React.FC<{ message: string }> = ({ message }) => (
     </div>
 );
 
+type AspectRatio = '1:1' | '4:5' | '16:9' | '9:16';
 const aspectRatios: { value: AspectRatio; label: string; icon: React.ReactNode }[] = [
     { value: '1:1', label: '1:1', icon: <div className="w-6 h-6 border-2 border-current rounded-sm" /> },
     { value: '4:5', label: '4:5', icon: <div className="w-5 h-6 border-2 border-current rounded-sm" /> },
@@ -34,11 +36,71 @@ const aspectRatioClasses: Record<AspectRatio, string> = {
     '9:16': 'aspect-[9/16]',
 };
 
+// --- START: Context-Aware Style Presets ---
+type StyleCategory = 'style' | 'lighting' | 'composition' | 'mood';
+type StyleOption = { category: StyleCategory; name: string; options: string[] };
+
+const stylePresets: Record<string, StyleOption[]> = {
+    Default: [
+        { category: 'style', name: 'Gaya Fotografi', options: ['Cinematic', 'Minimalist', 'Vintage', 'Abstract'] },
+        { category: 'lighting', name: 'Pencahayaan', options: ['Dramatic', 'Soft Light', 'Golden Hour', 'Studio Light'] },
+        { category: 'composition', name: 'Komposisi', options: ['Close-up', 'Wide Shot', 'Portrait', 'Top-down'] },
+        { category: 'mood', name: 'Suasana', options: ['Misterius', 'Ceria', 'Tenang', 'Energik', 'Elegan'] },
+    ],
+    Food: [
+        { category: 'style', name: 'Gaya Fotografi Makanan', options: ['Dark & Moody', 'Minimalist', 'Rustic', 'Clean & Bright', 'Food Porn'] },
+        { category: 'lighting', name: 'Pencahayaan', options: ['Natural Light', 'Soft Light', 'Backlit', 'Hard Shadow'] },
+        { category: 'composition', name: 'Komposisi', options: ['Top-down', 'Close-up', '45-Degree Angle', 'Human Element'] },
+        { category: 'mood', name: 'Suasana', options: ['Lezat', 'Segar', 'Hangat', 'Elegan', 'Rumahan'] },
+    ],
+    Drink: [
+        { category: 'style', name: 'Gaya Fotografi Minuman', options: ['Splash', 'Minimalist', 'Lifestyle', 'Dark & Moody'] },
+        { category: 'lighting', name: 'Pencahayaan', options: ['Backlit', 'Natural Light', 'Studio Light', 'Hard Shadow'] },
+        { category: 'composition', name: 'Komposisi', options: ['Close-up', 'Garnishes', 'Human Element', 'Top-down'] },
+        { category: 'mood', name: 'Suasana', options: ['Menyegarkan', 'Hangat', 'Elegan', 'Santai'] },
+    ],
+    Portrait: [
+        { category: 'style', name: 'Gaya Fotografi Potret', options: ['Cinematic', 'Fashion', 'Fine Art', 'Candid', 'Headshot'] },
+        { category: 'lighting', name: 'Pencahayaan', options: ['Rembrandt', 'Golden Hour', 'Studio Light', 'Dramatic', 'Neon'] },
+        { category: 'composition', name: 'Komposisi', options: ['Close-up', 'Medium Shot', 'Full Body', 'Rule of Thirds'] },
+        { category: 'mood', name: 'Suasana', options: ['Ceria', 'Misterius', 'Profesional', 'Elegan', 'Intim'] },
+    ],
+    Landscape: [
+        { category: 'style', name: 'Gaya Fotografi Pemandangan', options: ['Epic', 'Long Exposure', 'Minimalist', 'Infrared', 'Aerial'] },
+        { category: 'lighting', name: 'Pencahayaan', options: ['Golden Hour', 'Blue Hour', 'Misty', 'Dramatic Sky'] },
+        { category: 'composition', name: 'Komposisi', options: ['Wide Shot', 'Leading Lines', 'Framing', 'Symmetry'] },
+        { category: 'mood', name: 'Suasana', options: ['Tenang', 'Megah', 'Misterius', 'Damai', 'Dramatis'] },
+    ],
+    Product: [
+        { category: 'style', name: 'Gaya Fotografi Produk', options: ['Clean Catalog', 'Lifestyle', 'Minimalist', 'Hero Shot'] },
+        { category: 'lighting', name: 'Pencahayaan', options: ['Studio Light', 'Soft Light', 'Dramatic', 'Ring Light'] },
+        { category: 'composition', name: 'Komposisi', options: ['Close-up', 'Isometric', 'Group Shot', 'Floating'] },
+        { category: 'mood', name: 'Suasana', options: ['Elegan', 'Modern', 'Premium', 'Fun', 'Natural'] },
+    ],
+};
+
+type SelectedStyles = {
+    [key: string]: string | null;
+};
+
+interface SavedStyle {
+    id: number;
+    name: string;
+    styles: SelectedStyles;
+}
+
+type ApiKeyStatusResponse = {
+    isSet?: boolean;
+    maskedKey?: string | null;
+    updatedAt?: string | null;
+    message?: string;
+};
+
 const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; message: string }> = ({ isOpen, onClose, message }) => {
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" style={{ animation: 'fadeInUp 0.3s ease-out forwards' }} onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" onClick={e => e.stopPropagation()}>
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
                     <XIcon className="h-6 w-6 text-red-600" strokeWidth="2.5" />
@@ -47,7 +109,7 @@ const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; message: stri
                 <p className="text-gray-600 mt-2 mb-6 text-sm">{message}</p>
                 <button 
                     onClick={onClose} 
-                    className="w-full px-4 py-2 font-semibold text-white bg-[#0D47A1] rounded-lg hover:bg-[#1565C0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0D47A1]"
+                    className="w-full px-4 py-2 font-semibold text-white bg-[#0D47A1] rounded-lg hover:bg-[#1565C0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#1565C0]"
                 >
                     Mengerti
                 </button>
@@ -65,7 +127,7 @@ const UserApiErrorModal: React.FC<{
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" onClick={onClose}>
+        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4" style={{ animation: 'fadeInUp 0.3s ease-out forwards' }} onClick={onClose}>
             <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 text-center" onClick={e => e.stopPropagation()}>
                 <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
                     <KeyIcon className="h-6 w-6 text-red-600" strokeWidth="2" />
@@ -91,9 +153,9 @@ const UserApiErrorModal: React.FC<{
     );
 };
 
-
-const GenerateImagePage = () => {
-    const { user, handleSaveProject, handleCreditDeduction, onNavigate, userApiKeyInfo } = useAppContext();
+export default function GenerateImagePage() {
+    const { appData, setAppData, handleSaveProject, refreshAppData } = useAppContext();
+    const router = useRouter();
 
     const [originalImage, setOriginalImage] = useState<string | null>(null);
     const [editedImage, setEditedImage] = useState<string | null>(null);
@@ -107,155 +169,185 @@ const GenerateImagePage = () => {
     const [isAdvancedOpen, setIsAdvancedOpen] = useState(false);
     const [selectedStyles, setSelectedStyles] = useState<SelectedStyles>({});
     const [isAnalyzingStyles, setIsAnalyzingStyles] = useState(false);
-    const [currentAdvancedStyles, setCurrentAdvancedStyles] = useState<StyleOption[]>(() => getDefaultStylePresets());
+    const [currentAdvancedStyles, setCurrentAdvancedStyles] = useState<StyleOption[]>(stylePresets.Default);
     const [detectedCategory, setDetectedCategory] = useState<string | null>(null);
     const [detectedSubject, setDetectedSubject] = useState<string | null>(null);
     const [isolateProduct, setIsolateProduct] = useState<boolean>(true);
     const [generationSuccess, setGenerationSuccess] = useState(false);
     const [savedStyles, setSavedStyles] = useState<SavedStyle[]>([]);
-    const [fullPromptForSaving, setFullPromptForSaving] = useState<string>('');
     const [isSaveStyleModalOpen, setIsSaveStyleModalOpen] = useState(false);
     const [newPresetName, setNewPresetName] = useState('');
     const [presetNameError, setPresetNameError] = useState<string | null>(null);
-    const [useOwnApiKey, setUseOwnApiKey] = useState(false);
-    const [isSavingProject, setIsSavingProject] = useState(false);
+    const [apiKeyStatus, setApiKeyStatus] = useState<{ isSet: boolean; maskedKey: string | null; loading: boolean; error: string | null }>(() => ({
+        isSet: Boolean(appData?.userApiKeyStatus?.isSet),
+        maskedKey: null,
+        loading: true,
+        error: null,
+    }));
+    const [useOwnApiKey, setUseOwnApiKey] = useState(() => Boolean(appData?.userApiKeyStatus?.isSet));
 
     const [projectTitle, setProjectTitle] = useState('');
     const [generatedCaption, setGeneratedCaption] = useState('');
     const [isCaptionLoading, setIsCaptionLoading] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const abortControllerRef = useRef<AbortController | null>(null);
-    const analysisAbortControllerRef = useRef<AbortController | null>(null);
-    const loadingMessageTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([]);
-    
-    const hasInitialisedOwnKeyRef = useRef(false);
 
     useEffect(() => {
-        if (!userApiKeyInfo.hasKey) {
-            setUseOwnApiKey(false);
-            hasInitialisedOwnKeyRef.current = false;
-            return;
-        }
-
-        if (!hasInitialisedOwnKeyRef.current) {
-            setUseOwnApiKey(true);
-            hasInitialisedOwnKeyRef.current = true;
-        }
-    }, [userApiKeyInfo.hasKey]);
-
-    const clearLoadingSequence = useCallback(() => {
-        loadingMessageTimersRef.current.forEach((timerId) => clearTimeout(timerId));
-        loadingMessageTimersRef.current = [];
-    }, []);
-
-    const startLoadingSequence = useCallback(() => {
-        clearLoadingSequence();
-        const steps: Array<{ delay: number; message: string }> = [
-            { delay: 0, message: "Mempersiapkan gambar..." },
-            { delay: 900, message: "Menganalisis gaya dan komposisi..." },
-            { delay: 1800, message: "Menyesuaikan pencahayaan & mood..." },
-            { delay: 2700, message: "Merender detail akhir berkualitas tinggi..." },
-        ];
-
-        steps.forEach(({ delay, message }) => {
-            const timer = setTimeout(() => setLoadingMessage(message), delay);
-            loadingMessageTimersRef.current.push(timer);
-        });
-    }, [clearLoadingSequence]);
-
-    useEffect(() => {
-        return () => {
-            clearLoadingSequence();
+        const controller = new AbortController();
+        const loadStatus = async () => {
+            setApiKeyStatus((prev) => ({ ...prev, loading: true, error: null }));
+            try {
+                const response = await fetch('/api/user/api-key', { cache: 'no-store', signal: controller.signal });
+                let payload: ApiKeyStatusResponse = {};
+                try {
+                    payload = (await response.json()) as ApiKeyStatusResponse;
+                } catch {
+                    payload = {};
+                }
+                if (!response.ok) {
+                    throw new Error(payload?.message ?? 'Gagal memuat status kunci API');
+                }
+                if (!controller.signal.aborted) {
+                    const isSet = Boolean(payload?.isSet);
+                    setApiKeyStatus({
+                        isSet,
+                        maskedKey: payload?.maskedKey ?? null,
+                        loading: false,
+                        error: null,
+                    });
+                    setAppData((prev) => (prev ? { ...prev, userApiKeyStatus: { isSet } } : prev));
+                    setUseOwnApiKey((prev) => prev || isSet);
+                }
+            } catch (error) {
+                if (!controller.signal.aborted) {
+                    const message = error instanceof Error ? error.message : 'Gagal memuat status kunci API';
+                    setApiKeyStatus((prev) => ({ ...prev, loading: false, error: message }));
+                }
+            }
         };
-    }, [clearLoadingSequence]);
-
-    const handleGenericError = useCallback((errorMessage: string, context: 'user' | 'system') => {
-        if (context === 'user') {
-            setUserApiError(errorMessage);
+        loadStatus();
+        return () => controller.abort();
+    }, [setAppData]);
+    
+    const handleNavigate = (page: 'dashboard' | 'settings') => {
+        if (page === 'dashboard') {
+            router.push('/');
         } else {
-            setError(errorMessage);
+            router.push(`/${page}`);
+        }
+    };
+
+    const handleGenericError = (err: unknown, wasUsingUserKey: boolean) => {
+        let message = 'Terjadi kesalahan.';
+        let code: string | undefined;
+
+        if (typeof err === 'string') {
+            message = err;
+        } else if (err && typeof err === 'object') {
+            const maybeMessage = (err as Record<string, unknown>).message;
+            const maybeCode = (err as Record<string, unknown>).code;
+            if (typeof maybeMessage === 'string') {
+                message = maybeMessage;
+            } else if (err instanceof Error) {
+                message = err.message;
+            }
+            if (typeof maybeCode === 'string') {
+                code = maybeCode;
+            }
+        } else if (err instanceof Error) {
+            message = err.message;
+        }
+
+        console.error('[GenerateImagePage] error:', { message, code, wasUsingUserKey });
+
+        let userFriendlyMessage = 'Terjadi kesalahan yang tidak terduga. Silakan coba lagi nanti.';
+        const lowerCaseMessage = message.toLowerCase();
+
+        const isInsufficientCredits = code === 'credits/insufficient' || lowerCaseMessage.includes('kredit tidak cukup');
+
+        if (wasUsingUserKey) {
+            if (lowerCaseMessage.includes('api key not valid') || lowerCaseMessage.includes('permission denied') || lowerCaseMessage.includes('api_key_invalid')) {
+                userFriendlyMessage = 'Kunci API yang Anda masukkan tidak valid atau tidak memiliki izin.';
+            } else if (lowerCaseMessage.includes('resource has been exhausted')) {
+                userFriendlyMessage = 'Kunci API Anda telah melebihi kuota penggunaan. Silakan periksa akun Google AI Studio Anda.';
+            } else if (code === 'rate-limit') {
+                userFriendlyMessage = 'Permintaan terlalu sering. Mohon tunggu sebentar sebelum mencoba lagi.';
+            } else {
+                userFriendlyMessage = 'Gagal menggunakan kunci API Anda. Pastikan kunci tersebut benar dan aktif.';
+            }
+            setUserApiError(userFriendlyMessage);
+        } else {
+            if (isInsufficientCredits) {
+                userFriendlyMessage = 'Kredit tidak cukup. Silakan top up atau gunakan kunci API Anda sendiri.';
+            } else if (code === 'rate-limit' || lowerCaseMessage.includes('rate-limit')) {
+                userFriendlyMessage = 'Permintaan terlalu sering. Mohon tunggu sebentar sebelum mencoba lagi.';
+            } else if (lowerCaseMessage.includes('resource has been exhausted')) {
+                userFriendlyMessage = 'Kuota kredit aplikasi telah habis. Coba lagi nanti atau gunakan kunci API Anda sendiri.';
+            } else if (lowerCaseMessage.includes('safety')) {
+                userFriendlyMessage = 'Konten tidak dapat dibuat karena melanggar kebijakan keamanan. Coba prompt/gambar yang berbeda.';
+            } else if (lowerCaseMessage.includes('500') || lowerCaseMessage.includes('unknown') || lowerCaseMessage.includes('xhr') || lowerCaseMessage.includes('failed to fetch')) {
+                userFriendlyMessage = 'Server AI sedang sibuk atau mengalami gangguan sesaat. Silakan coba lagi beberapa saat lagi.';
+            }
+            setError(userFriendlyMessage);
             setIsErrorModalOpen(true);
         }
-    }, []);
+    };
     
-    const analyzeImageForStyles = useCallback(async (signal: AbortSignal, image: string) => {
+    const analyzeImageForStyles = async () => {
+        if (!originalImage) return;
+
         setIsAnalyzingStyles(true);
         setError(null);
         setUserApiError(null);
+
+        const isUsingUserKey = useOwnApiKey && apiKeyStatus.isSet;
         
         try {
-            const response = await fetch('/api/generate/image-analysis', {
+            setLoadingMessage('Menganalisis gambar...');
+            const response = await fetch('/api/generate/image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image, useOwnApiKey }),
-                signal,
+                body: JSON.stringify({
+                    action: 'analyze',
+                    imageDataUrl: originalImage,
+                    useOwnApiKey: isUsingUserKey,
+                }),
             });
 
-            const data = await response.json();
-
+            const result = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data.error || 'Failed to analyze image');
+                throw { message: result.message || 'Gagal menganalisis gambar.', code: result.code };
             }
             
-            setCurrentAdvancedStyles(data.stylePresets);
-            setDetectedCategory(data.displayCategoryName);
-            setDetectedSubject(data.subject);
+            const { category, subject } = result;
+            
+            const prettyCategoryName: Record<string, string> = { Food: 'Makanan', Drink: 'Minuman', Portrait: 'Potret', Landscape: 'Pemandangan', Product: 'Produk', Default: 'Umum' };
+            const styleCategoryKey = category in stylePresets ? category : 'Default';
+            const displayCategoryName = prettyCategoryName[category] || category;
+
+            setCurrentAdvancedStyles(stylePresets[styleCategoryKey]);
+            setDetectedCategory(displayCategoryName);
+            setDetectedSubject(subject);
         } catch (err) {
-            if (err instanceof Error && err.name !== 'AbortError') {
-                handleGenericError(err.message, useOwnApiKey ? 'user' : 'system');
-            }
-            setCurrentAdvancedStyles(getDefaultStylePresets());
+            handleGenericError(err, isUsingUserKey);
+            setCurrentAdvancedStyles(stylePresets.Default);
             setDetectedCategory('Umum');
         } finally {
-            if (!signal.aborted) {
-                setIsAnalyzingStyles(false);
-                if (analysisAbortControllerRef.current?.signal === signal) {
-                    analysisAbortControllerRef.current = null;
-                }
-            }
-        }
-    }, [getDefaultStylePresets, handleGenericError, useOwnApiKey]);
-    
-    useEffect(() => {
-        if (!originalImage) {
-            // Batalkan analisis yang sedang berjalan dari gambar sebelumnya
-            analysisAbortControllerRef.current?.abort();
-            analysisAbortControllerRef.current = null;
-            
-            // Atur ulang semua state yang terkait dengan analisis dan opsi lanjutan
-            setCurrentAdvancedStyles(getDefaultStylePresets());
-            setDetectedCategory(null);
-            setDetectedSubject(null);
             setIsAnalyzingStyles(false);
-            setIsAdvancedOpen(false); // Tutup panel
-            return;
         }
-
-        // Pemanggilan analisis otomatis telah dihapus dari useEffect ini.
-        // Analisis sekarang hanya akan dipicu oleh handleAdvancedOptionsToggle.
-
-        // Opsional: Kembalikan fungsi pembersihan untuk membatalkan analisis jika komponen di-unmount
-        return () => {
-            analysisAbortControllerRef.current?.abort();
-        };
-    }, [originalImage, getDefaultStylePresets]);
+    };
     
     const handleAdvancedOptionsToggle = () => {
         const aboutToOpen = !isAdvancedOpen;
-        setIsAdvancedOpen(aboutToOpen);
-
-        if (aboutToOpen && originalImage) {
-            const controller = new AbortController();
-            analysisAbortControllerRef.current?.abort();
-            analysisAbortControllerRef.current = controller;
-            void analyzeImageForStyles(controller.signal, originalImage);
+        if (aboutToOpen && !detectedCategory && originalImage) {
+            analyzeImageForStyles();
         }
+        setIsAdvancedOpen(aboutToOpen);
     };
 
     const handleGoToSettings = () => {
         setUserApiError(null);
-        onNavigate('settings');
+        handleNavigate('settings');
     };
 
     const handleStyleSelect = (category: string, option: string) => {
@@ -266,99 +358,22 @@ const GenerateImagePage = () => {
 
     const handleOpenSaveStyleModal = () => setIsSaveStyleModalOpen(true);
 
-    const [presets, setPresets] = useState<Preset[]>([]);
-
-    useEffect(() => {
-        const fetchPresets = async () => {
-            try {
-                const response = await fetch('/api/presets');
-                if (!response.ok) {
-                    throw new Error('Failed to fetch presets');
-                }
-                const data = await response.json();
-                setPresets(data);
-            } catch (error) {
-                console.error(error);
-                // Optionally, show an error message to the user
-            }
-        };
-
-        if (user) {
-            fetchPresets();
-        }
-    }, [user]);
-
-    const handleSavePreset = async (name: string, styles: SelectedStyles) => {
-        if (!detectedCategory) {
-            setError('Tidak dapat menyimpan preset tanpa kategori gambar yang terdeteksi.');
-            setIsErrorModalOpen(true);
-            return false;
-        }
-        try {
-            const response = await fetch('/api/presets', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, styles, category: detectedCategory }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to save preset');
-            }
-
-            const newPreset = await response.json();
-            setPresets(prev => [...prev, newPreset]);
-            return true;
-        } catch (error) {
-            console.error(error);
-            setError('Gagal menyimpan preset. Silakan coba lagi.');
-            setIsErrorModalOpen(true);
-            return false;
-        }
-    };
-
-    const handleDeletePreset = async (presetId: string) => {
-        try {
-            const response = await fetch('/api/presets', {
-                method: 'DELETE',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: presetId }),
-            });
-
-            if (!response.ok) {
-                throw new Error('Failed to delete preset');
-            }
-
-            setPresets(prev => prev.filter(p => p.id !== presetId));
-        } catch (error) {
-            console.error(error);
-            setError('Gagal menghapus preset. Silakan coba lagi.');
-            setIsErrorModalOpen(true);
-        }
-    };
-
-    const handleSaveStyleSubmit = async (e: React.FormEvent) => {
+    const handleSaveStyleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const trimmedName = newPresetName.trim();
         if (!trimmedName) {
             setPresetNameError("Nama preset tidak boleh kosong.");
             return;
         }
-        if (presets.some(p => p.name.toLowerCase() === trimmedName.toLowerCase())) {
+        if (savedStyles.some(s => s.name.toLowerCase() === trimmedName.toLowerCase())) {
             setPresetNameError("Nama preset sudah ada.");
             return;
         }
-
-        const success = await handleSavePreset(trimmedName, selectedStyles);
-        if (success) {
-            setIsSaveStyleModalOpen(false);
-            setNewPresetName('');
-            setPresetNameError(null);
-        }
+        setSavedStyles(prev => [...prev, { id: Date.now(), name: trimmedName, styles: selectedStyles }]);
+        setIsSaveStyleModalOpen(false);
     };
 
-    const applySavedStyle = (styles: SelectedStyles) => {
-        setSelectedStyles(styles);
-    };
+    const applySavedStyle = (styles: SelectedStyles) => setSelectedStyles(styles);
 
     const handleImageUpload = (file: File) => {
         if (file && file.type.startsWith('image/')) {
@@ -372,7 +387,6 @@ const GenerateImagePage = () => {
             setIsAdvancedOpen(false);
             setGeneratedCaption('');
             setProjectTitle('');
-            setCurrentAdvancedStyles(getDefaultStylePresets());
             
             const reader = new FileReader();
             reader.onloadend = () => setOriginalImage(reader.result as string);
@@ -388,34 +402,51 @@ const GenerateImagePage = () => {
         e.target.value = '';
     };
 
-    const handleCancelGeneration = () => {
-        if (abortControllerRef.current) {
-            abortControllerRef.current.abort();
-        }
-        clearLoadingSequence();
-        setIsLoading(false);
-        setLoadingMessage('');
-    };
+    const processImageWithCanvas = useCallback(async (imageSrc: string, targetAspectRatio: AspectRatio): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            if (!ctx) return reject(new Error('Could not get canvas context'));
+
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.src = imageSrc;
+            img.onload = () => {
+                const ratioValue = eval(targetAspectRatio.replace(':', '/'));
+                const canvasWidth = 1024;
+                canvas.width = canvasWidth;
+                canvas.height = canvasWidth / ratioValue;
+                
+                const imgRatio = img.width / img.height;
+                const canvasRatio = canvas.width / canvas.height;
+                let sx = 0, sy = 0, sWidth = img.width, sHeight = img.height;
+
+                if (imgRatio > canvasRatio) {
+                    sWidth = img.height * canvasRatio;
+                    sx = (img.width - sWidth) / 2;
+                } else {
+                    sHeight = img.width / canvasRatio;
+                    sy = (img.height - sHeight) / 2;
+                }
+                
+                ctx.fillStyle = 'white';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, sx, sy, sWidth, sHeight, 0, 0, canvas.width, canvas.height);
+                
+                resolve(canvas.toDataURL('image/jpeg', 0.95));
+            };
+            img.onerror = () => reject(new Error('Gagal memuat gambar untuk diproses.'));
+        });
+    }, []);
 
     const handleGenerate = async () => {
-        if (!originalImage || !user) {
+        if (!originalImage || !appData) {
             setError("Silakan unggah gambar terlebih dahulu.");
             setIsErrorModalOpen(true);
             return;
         }
 
-        if (!useOwnApiKey && user.credits < 5) {
-            setError("Kredit Anda tidak mencukupi untuk membuat gambar.");
-            setIsErrorModalOpen(true);
-            return;
-        }
-
-        abortControllerRef.current = new AbortController();
-        const signal = abortControllerRef.current.signal;
-
         setIsLoading(true);
-        setLoadingMessage("Mempersiapkan gambar...");
-        startLoadingSequence();
         setEditedImage(null);
         setGenerationSuccess(false);
         setGeneratedCaption('');
@@ -423,108 +454,120 @@ const GenerateImagePage = () => {
         setFullPromptForSaving('');
         setError(null);
         setUserApiError(null);
-        
+
+        const isUsingUserKey = useOwnApiKey && apiKeyStatus.isSet;
+
+        if (!isUsingUserKey) {
+            if (appData.user.credits < 1) {
+                setError("Kredit Anda tidak mencukupi untuk membuat gambar.");
+                setIsErrorModalOpen(true);
+                setIsLoading(false);
+                return;
+            }
+        }
+
         try {
+            setLoadingMessage("Menyiapkan gambar...");
+            const canvasImage = await processImageWithCanvas(originalImage, aspectRatio);
+            
+            setLoadingMessage("Mengirim ke AI...");
+            const apiBody = {
+                action: 'generate',
+                imageDataUrl: canvasImage,
+                selectedStyles,
+                detectedSubject,
+                detectedCategory,
+                isolateProduct,
+                useOwnApiKey: isUsingUserKey,
+            };
+
             const response = await fetch('/api/generate/image', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    image: originalImage,
-                    aspectRatio,
-                    selectedStyles,
-                    detectedCategory,
-                    detectedSubject,
-                    isolateProduct,
-                    useOwnApiKey,
-                }),
-                signal,
+                body: JSON.stringify(apiBody),
             });
 
-            const data = await response.json();
+            const result = await response.json().catch(() => ({}));
+
             if (!response.ok) {
-                throw new Error(data.error);
-            }
-            
-            if (!useOwnApiKey) {
-                await handleCreditDeduction(5, data.generationId);
+                throw { message: result.message || 'Gagal menghasilkan gambar.', code: result.code };
             }
 
-            setEditedImage(data.imageUrl);
-            setFullPromptForSaving(data.finalPrompt);
-            setGenerationSuccess(true);
-            setProjectTitle(detectedSubject ? `Proyek ${detectedSubject}` : `Proyek Gambar AI ${new Date().toLocaleTimeString()}`);
+            const { editedImageUrl, fullPrompt, jobId, status } = result;
             
-        } catch (err) {
-            if (err instanceof Error && err.name !== 'AbortError') {
-                handleGenericError(err.message, useOwnApiKey ? 'user' : 'system');
+            if (editedImageUrl) {
+                setEditedImage(editedImageUrl);
+                setGenerationSuccess(true);
+                const newTitle = detectedSubject ? `Proyek ${detectedSubject}` : `Proyek Gambar AI ${new Date().toLocaleTimeString()}`;
+                setProjectTitle(newTitle);
+                setFullPromptForSaving(fullPrompt);
+
+                if (!isUsingUserKey) {
+                    void refreshAppData();
+                }
+
+                // Auto-save project upon successful generation
+                const newProject: Project = {
+                    id: Date.now(),
+                    jobId: jobId,
+                    userId: appData.user.email, // Assuming email is unique user ID
+                    status: status,
+                    title: newTitle,
+                    imageUrl: editedImageUrl,
+                    caption: 'Gambar AI yang dibuat dengan KitStudio',
+                    aspectRatio: aspectRatio,
+                    promptDetails: formatPromptDetails(selectedStyles, currentAdvancedStyles),
+                    type: 'image',
+                    promptFull: fullPrompt,
+                };
+                handleSaveProject(newProject);
+
+            } else {
+                throw new Error("Tidak ada gambar yang dihasilkan oleh server.");
             }
+        } catch (err) {
+            handleGenericError(err, isUsingUserKey);
         } finally {
-             clearLoadingSequence();
-             setLoadingMessage('');
-             setIsLoading(false);
-             abortControllerRef.current = null;
+            setIsLoading(false);
         }
     };
 
     const handleGenerateCaption = async () => {
-        if (!editedImage) return;
+        if (!editedImage || !appData) return;
 
         setIsCaptionLoading(true);
         setError(null);
         setUserApiError(null);
 
+        const isUsingUserKey = useOwnApiKey && apiKeyStatus.isSet;
+        
         try {
             const response = await fetch('/api/generate/caption', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ image: editedImage, useOwnApiKey }),
+                body: JSON.stringify({
+                    imageDataUrl: editedImage,
+                    useOwnApiKey: isUsingUserKey,
+                })
             });
-            const data = await response.json();
+
+            const result = await response.json().catch(() => ({}));
             if (!response.ok) {
-                throw new Error(data.error);
+                throw { message: result.message || "Gagal membuat caption.", code: result.code };
             }
-            setGeneratedCaption(data.caption);
+
+            setGeneratedCaption(result.caption);
+
+            if (!isUsingUserKey) {
+                void refreshAppData();
+            }
+
         } catch (err) {
-            if (err instanceof Error) {
-                handleGenericError(err.message, useOwnApiKey ? 'user' : 'system');
-            }
+            handleGenericError(err, isUsingUserKey);
         } finally {
             setIsCaptionLoading(false);
         }
     };
-    
-    const onSaveProject = async () => {
-         if (!editedImage || !projectTitle) {
-            setError("Judul proyek tidak boleh kosong.");
-            setIsErrorModalOpen(true);
-            return;
-        }
-
-        setIsSavingProject(true);
-
-        try {
-            const promptDetails = formatPromptDetails(selectedStyles, currentAdvancedStyles);
-
-            const newProject: Omit<Project, 'id' | 'user_id' | 'created_at'> = {
-                title: projectTitle,
-                imageUrl: editedImage,
-                caption: generatedCaption || 'Gambar AI yang dibuat dengan KitStudio',
-                aspectRatio: aspectRatio,
-                promptDetails: promptDetails,
-                type: 'image',
-                promptFull: fullPromptForSaving,
-            };
-
-            await handleSaveProject(newProject);
-            onNavigate('dashboard');
-        } catch (err) {
-            const message = err instanceof Error ? err.message : 'Terjadi kesalahan saat menyimpan proyek.';
-            setError(message);
-            setIsErrorModalOpen(true);
-        } finally {
-            setIsSavingProject(false);
-        }
-    }
 
     const formatPromptDetails = (styles: SelectedStyles, styleOptions: StyleOption[]): string => {
         const categoryNameMap = styleOptions.reduce((acc, curr) => {
@@ -538,6 +581,17 @@ const GenerateImagePage = () => {
             .join(', ');
     };
 
+    const handleSaveAndNavigate = () => {
+        if (!editedImage || !projectTitle) {
+            setError("Judul proyek tidak boleh kosong.");
+            setIsErrorModalOpen(true);
+            return;
+        }
+        // Project is already saved, just update title/caption if changed
+        // and then navigate.
+        router.push('/');
+    };
+    
     const ImageDropzone = () => (
         <div 
             className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-[#1565C0] hover:bg-blue-50 transition-colors"
@@ -587,13 +641,12 @@ const GenerateImagePage = () => {
         </div>
     );
 
-    if (!user) {
-        return <div className="flex items-center justify-center min-h-screen text-[#0D47A1]">Memuat data pengguna...</div>;
+    if (!appData) {
+        return null; // Let layout handle loading
     }
 
     const isGenerateDisabled = isLoading || !originalImage || isAnalyzingStyles;
-    const isCaptionDisabled = isCaptionLoading;
-    const filteredPresets = presets.filter(p => p.category === detectedCategory);
+    const isCaptionDisabled = isCaptionLoading || !editedImage;
 
     return (
         <>
@@ -633,7 +686,7 @@ const GenerateImagePage = () => {
                             <span className="text-sm font-semibold text-[#0D47A1]">Sisa Kredit Anda:</span>
                             <div className="flex items-center gap-2">
                                 <CreditIcon className="w-5 h-5 text-amber-500" strokeWidth="2" />
-                                <span className="text-lg font-bold text-[#0D47A1]">{user.credits}</span>
+                                <span className="text-lg font-bold text-[#0D47A1]">{appData.user.credits}</span>
                             </div>
                         </div>
 
@@ -707,28 +760,20 @@ const GenerateImagePage = () => {
                                             <span className="ml-2 text-sm text-gray-600">Menganalisis gambar...</span>
                                         </div>
                                     )}
-                                                                         <div className={`space-y-4 ${isAnalyzingStyles ? 'hidden' : ''}`}>
-                                        {filteredPresets.length > 0 && (
+                                    <div className={`space-y-4 ${isAnalyzingStyles ? 'hidden' : ''}`}>
+                                        {savedStyles.length > 0 && (
                                             <div>
-                                                <h4 className="text-sm font-semibold text-gray-700 mb-2">Preset Gaya untuk {detectedCategory}</h4>
+                                                <h4 className="text-sm font-semibold text-gray-700 mb-2">Preset Gaya</h4>
                                                 <div className="flex space-x-3 overflow-x-auto pb-2 -mx-1 px-1">
-                                                    {filteredPresets.map((preset) => (
-                                                        <div key={preset.id} className="relative group">
-                                                            <button
-                                                                onClick={() => applySavedStyle(preset.styles)}
-                                                                className="flex-shrink-0 w-32 text-left p-3 rounded-lg border bg-white shadow-sm hover:border-[#1565C0] hover:bg-blue-50 transition-colors"
-                                                                title={formatPromptDetails(preset.styles, currentAdvancedStyles)}
-                                                            >
-                                                                <span className="font-bold text-sm text-[#0D47A1]">{preset.name}</span>
-                                                            </button>
-                                                            <button
-                                                                onClick={() => handleDeletePreset(preset.id)}
-                                                                className="absolute top-1 right-1 p-1 bg-white/50 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-100 opacity-0 group-hover:opacity-100 transition-opacity"
-                                                                title="Hapus preset"
-                                                            >
-                                                                <TrashIcon className="w-4 h-4" />
-                                                            </button>
-                                                        </div>
+                                                    {savedStyles.map((saved) => (
+                                                        <button
+                                                            key={saved.id}
+                                                            onClick={() => applySavedStyle(saved.styles)}
+                                                            className="flex-shrink-0 w-32 text-left p-3 rounded-lg border bg-white shadow-sm hover:border-[#1565C0] hover:bg-blue-50 transition-colors"
+                                                            title={formatPromptDetails(saved.styles, currentAdvancedStyles)}
+                                                        >
+                                                            <span className="font-bold text-sm text-[#0D47A1]">{saved.name}</span>
+                                                        </button>
                                                     ))}
                                                 </div>
                                             </div>
@@ -777,7 +822,7 @@ const GenerateImagePage = () => {
                              </div>
                         )}
 
-                        {userApiKeyInfo.hasKey && (
+                        {apiKeyStatus.isSet && (
                             <div className="p-3 bg-blue-50 rounded-lg">
                                 <label htmlFor="use-own-api-key-toggle" className="flex items-center justify-between w-full cursor-pointer">
                                     <span className="text-sm font-semibold text-[#0D47A1] pr-4">
@@ -794,24 +839,26 @@ const GenerateImagePage = () => {
                             </div>
                         )}
 
-                        {isLoading ? (
-                            <button 
-                                onClick={handleCancelGeneration}
-                                className="w-full flex items-center justify-center px-4 py-3 text-base font-bold text-white bg-gradient-to-r from-red-500 to-red-600 hover:from-red-600 hover:to-red-700 rounded-lg transition-all shadow-md"
-                            >
-                                <XIcon className="w-5 h-5 mr-2" />
-                                <span>Batal</span>
-                            </button>
-                        ) : (
-                             <button 
-                                onClick={() => handleGenerate()}
-                                disabled={isGenerateDisabled}
-                                className="w-full flex items-center justify-center px-4 py-3 text-base font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                                <SparklesIcon className="w-5 h-5 mr-2" />
-                                <span>{`4. Generate (${useOwnApiKey && userApiKeyInfo.hasKey ? 'Tanpa Kredit' : '5 Kredit'})`}</span>
-                            </button>
-                        )}
+                        <button 
+                            onClick={() => handleGenerate()}
+                            disabled={isGenerateDisabled}
+                            className="w-full flex items-center justify-center px-4 py-3 text-base font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 rounded-lg transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {isLoading ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>Memproses...</span>
+                                </>
+                            ) : (
+                                <>
+                                    <SparklesIcon className="w-5 h-5 mr-2" />
+                                    <span>{`4. Generate (${useOwnApiKey && apiKeyStatus.isSet ? 'Tanpa Kredit' : '1 Kredit'})`}</span>
+                                </>
+                            )}
+                        </button>
                     </div>
 
                     <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
@@ -893,25 +940,18 @@ const GenerateImagePage = () => {
                                                 ) : (
                                                     <>
                                                         <TextIcon className="w-4 h-4 mr-2" />
-                                                        Buat Caption (Gratis)
+                                                        Buat Caption ({useOwnApiKey && apiKeyStatus.isSet ? 'Gratis' : '1 Kredit'})
                                                     </>
                                                 )}
                                             </button>
                                         </div>
                                     </div>
                                     <button
-                                        onClick={onSaveProject}
-                                        disabled={!projectTitle || isSavingProject}
+                                        onClick={handleSaveAndNavigate}
+                                        disabled={!projectTitle}
                                         className="w-full flex items-center justify-center px-4 py-3 text-base font-bold text-white bg-[#0D47A1] hover:bg-[#1565C0] rounded-lg transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
-                                        {isSavingProject ? (
-                                            <>
-                                                <Spinner size="h-5 w-5 mr-2" />
-                                                Menyimpan...
-                                            </>
-                                        ) : (
-                                            'Simpan ke Project'
-                                        )}
+                                        Simpan & Kembali ke Dashboard
                                     </button>
                                 </div>
                             </div>
@@ -921,6 +961,4 @@ const GenerateImagePage = () => {
             </div>
         </>
     );
-};
-
-export default GenerateImagePage;
+}

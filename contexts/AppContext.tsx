@@ -1,230 +1,84 @@
-"use client";
+'use client';
 
 import React, {
   createContext,
-  useContext,
   useState,
+  useContext,
   ReactNode,
-  useCallback,
   useEffect,
+  useCallback,
 } from 'react';
-import {
-  AppData,
-  User,
-  Project,
-  DashboardStatsData,
-  CreditHistoryItem,
-  Page,
-} from '@/lib/types';
-import { useRouter } from 'next/navigation';
+import { AppData, Project } from '../lib/types';
 
-type UserApiKeyState = {
-  hasKey: boolean;
-  masked: string | null;
-  updatedAt: string | null;
-};
-
-type UserApiKeyPayload = {
-  hasKey?: boolean;
-  masked?: string | null;
-  updated_at?: string | null;
-  updatedAt?: string | null;
-} | null;
-
-interface AppContextType {
-    user: User | null;
-    projects: Project[];
-    dashboardStats: DashboardStatsData | null;
-    creditHistory: CreditHistoryItem[];
-    isSidebarOpen: boolean;
-    userApiKeyInfo: UserApiKeyState;
-    setInitialData: (data: AppData) => void;
-    handleSaveProject: (newProject: Omit<Project, 'id' | 'user_id' | 'created_at'>) => Promise<Project>;
-    handleCreditDeduction: (amount: number) => void;
-    setSidebarOpen: (isOpen: boolean) => void;
-    toggleSidebar: () => void;
-    onNavigate: (page: 'dashboard' | 'generate-image' | 'settings' | 'generate-caption') => void;
-    setUserApiKeyInfo: (info: UserApiKeyPayload) => void;
-    refreshUserApiKeyInfo: () => Promise<void>;
+interface AppProviderProps {
+  children: ReactNode;
+  initialData?: AppData | null;
 }
 
-const EMPTY_USER_API_KEY_INFO: UserApiKeyState = {
-  hasKey: false,
-  masked: null,
-  updatedAt: null,
-};
+interface AppContextType {
+  appData: AppData | null;
+  setAppData: React.Dispatch<React.SetStateAction<AppData | null>>;
+  projectToShare: Project | null;
+  setProjectToShare: React.Dispatch<React.SetStateAction<Project | null>>;
+  handleSaveProject: (newProject: Project) => void;
+  refreshAppData: () => Promise<void>;
+}
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export const AppContextProvider = ({
-  children,
-  initialData,
-}: {
-  children: ReactNode;
-  initialData?: AppData;
-}) => {
-  const [user, setUser] = useState<User | null>(initialData?.user ?? null);
-  const [projects, setProjects] = useState<Project[]>(initialData?.projects ?? []);
-  const [dashboardStats, setDashboardStats] = useState<DashboardStatsData | null>(
-    initialData?.dashboardStats ?? null
-  );
-  const [creditHistory, setCreditHistory] = useState<CreditHistoryItem[]>(initialData?.creditHistory ?? []);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [userApiKeyInfo, setUserApiKeyInfoState] = useState<UserApiKeyState>(EMPTY_USER_API_KEY_INFO);
-  const router = useRouter();
-
-  const normalizeUserApiKeyInfo = useCallback((info: UserApiKeyPayload): UserApiKeyState => {
-    if (!info) {
-      return EMPTY_USER_API_KEY_INFO;
-    }
-    return {
-      hasKey: Boolean(info.hasKey),
-      masked: info.masked ?? null,
-      updatedAt: info.updatedAt ?? info.updated_at ?? null,
-    };
-  }, []);
-
-  const refreshUserApiKeyInfo = useCallback(async () => {
-    try {
-      const response = await fetch('/api/user/api-key', { cache: 'no-store' });
-      if (!response.ok) {
-        setUserApiKeyInfoState(EMPTY_USER_API_KEY_INFO);
-        return;
-      }
-      const data = await response.json();
-      setUserApiKeyInfoState(normalizeUserApiKeyInfo(data));
-    } catch (error) {
-      console.error('Failed to load saved API key:', error);
-      setUserApiKeyInfoState(EMPTY_USER_API_KEY_INFO);
-    }
-  }, [normalizeUserApiKeyInfo]);
+export const AppProvider = ({ children, initialData = null }: AppProviderProps) => {
+  const [appData, setAppData] = useState<AppData | null>(initialData);
+  const [projectToShare, setProjectToShare] = useState<Project | null>(null);
 
   useEffect(() => {
-    void refreshUserApiKeyInfo();
-  }, [refreshUserApiKeyInfo]);
-
-  useEffect(() => {
-    if (!initialData) {
-      return;
+    if (initialData !== undefined) {
+      setAppData(initialData ?? null);
     }
-    setUser(initialData.user);
-    setProjects(initialData.projects);
-    setDashboardStats(initialData.dashboardStats);
-    setCreditHistory(initialData.creditHistory);
   }, [initialData]);
 
-  const setInitialData = useCallback((data: AppData) => {
-    setUser(data.user);
-    setProjects(data.projects);
-    setDashboardStats(data.dashboardStats);
-    setCreditHistory(data.creditHistory);
+  const handleSaveProject = (newProject: Project) => {
+    setAppData((prevData) => {
+      if (!prevData) return null;
+      return {
+        ...prevData,
+        projects: [newProject, ...prevData.projects],
+      };
+    });
+  };
+
+  const refreshAppData = useCallback(async () => {
+    try {
+      const response = await fetch('/api/bootstrap', { cache: 'no-store' });
+      if (!response.ok) {
+        throw new Error(`Failed to refresh app data: ${response.status}`);
+      }
+      const data = (await response.json()) as AppData;
+      setAppData(data);
+    } catch (error) {
+      console.error('Failed to refresh app data:', error);
+    }
   }, []);
 
-  const setUserApiKeyInfo = useCallback((info: UserApiKeyPayload) => {
-    setUserApiKeyInfoState(normalizeUserApiKeyInfo(info));
-  }, [normalizeUserApiKeyInfo]);
-
-  const handleSaveProject = useCallback(
-    async (newProjectData: Omit<Project, "id" | "user_id" | "created_at">) => {
-      const response = await fetch("/api/projects", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(newProjectData),
-      });
-
-      const payload = await response.json();
-
-      if (!response.ok) {
-        const message =
-          (payload && typeof payload.error === "string" && payload.error) ||
-          "Gagal menyimpan project.";
-        throw new Error(message);
-      }
-
-      const savedProject = payload as Project;
-      setProjects((prevProjects) => [savedProject, ...prevProjects]);
-      return savedProject;
-    },
-    []
+  return (
+    <AppContext.Provider
+      value={{
+        appData,
+        setAppData,
+        projectToShare,
+        setProjectToShare,
+        handleSaveProject,
+        refreshAppData,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
   );
-
-    const handleCreditDeduction = async (amount: number, generationId: string | null = null) => {
-        try {
-            const response = await fetch('/api/credits/deduct', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ amount, generationId }),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Gagal mengurangi kredit.');
-            }
-
-            setUser(prevUser => {
-                if (!prevUser) return null;
-                return { ...prevUser, credits: data.newCredits };
-            });
-
-            setDashboardStats(prevStats => {
-                if (!prevStats) return null;
-                return { ...prevStats, totalCreditsUsed: prevStats.totalCreditsUsed + amount };
-            });
-
-            setCreditHistory(prevHistory => [
-                data.newHistoryItem,
-                ...prevHistory,
-            ]);
-
-        } catch (error) {
-            console.error('Error deducting credits:', error);
-            // Opsional: tampilkan notifikasi error ke pengguna
-        }
-    };
-
-  const toggleSidebar = () => {
-    setIsSidebarOpen((prev) => !prev);
-  };
-
-  const onNavigate = (page: Page) => {
-    const pathMap: Record<Page, string> = {
-      dashboard: '/dashboard',
-      'generate-image': '/generate-image',
-      'generate-caption': '/generate-caption',
-      settings: '/settings',
-    };
-    router.push(pathMap[page]);
-  };
-
-  const value = {
-    user,
-    projects,
-    dashboardStats,
-    creditHistory,
-    isSidebarOpen,
-    userApiKeyInfo,
-    setInitialData,
-    handleSaveProject,
-    handleCreditDeduction,
-    setSidebarOpen: setIsSidebarOpen,
-    toggleSidebar,
-    onNavigate,
-    setUserApiKeyInfo,
-    refreshUserApiKeyInfo,
-  };
-
-  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
 };
 
 export const useAppContext = () => {
   const context = useContext(AppContext);
   if (context === undefined) {
-    throw new Error('useAppContext must be used within an AppContextProvider');
+    throw new Error('useAppContext must be used within an AppProvider');
   }
   return context;
 };

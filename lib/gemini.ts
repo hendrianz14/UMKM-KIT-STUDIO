@@ -1,4 +1,81 @@
-// This library translates simple user choices into detailed, technical instructions for the AI.
+
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+
+interface AuthOptions {
+    useOwnApiKey: boolean;
+    userApiKey: string | null;
+}
+
+import { GenerationConfig } from "@google/genai";
+
+interface GenerateContentBody {
+    model?: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    contents: any;
+    config?: GenerationConfig;
+}
+
+interface GenerateImagesBody {
+    model: string;
+    prompt: string;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    config?: any;
+}
+
+type ApiBody = GenerateContentBody | GenerateImagesBody;
+
+export async function authenticatedApiCall(
+    modelName: string,
+    body: ApiBody,
+    authOptions: AuthOptions
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): Promise<GenerateContentResponse | any> { // Can return different response types
+    const { useOwnApiKey, userApiKey } = authOptions;
+    
+    let apiKey: string | undefined;
+
+    if (useOwnApiKey && userApiKey) {
+        apiKey = userApiKey;
+    } else {
+        apiKey = process.env.API_KEY;
+    }
+
+    if (!apiKey) {
+        throw new Error('API key is missing. Please provide your own key or ensure the server has one configured.');
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+
+    const model = body.model || modelName;
+
+    if (model.startsWith('imagen')) {
+        if ('prompt' in body) {
+            const response = await ai.models.generateImages({
+                model,
+                prompt: body.prompt,
+                config: body.config,
+            });
+            return response;
+        } else {
+            throw new Error("The 'prompt' property is missing for the imagen model.");
+        }
+    } else if (model.startsWith('gemini')) {
+        if ('contents' in body) {
+            const response: GenerateContentResponse = await ai.models.generateContent({
+                model,
+                contents: body.contents,
+                config: body.config,
+            });
+            return response;
+        } else {
+            throw new Error("The 'contents' property is missing for the gemini model.");
+        }
+    } else {
+        throw new Error(`Unsupported model family for: ${model}`);
+    }
+}
+
+// --- START: PROFESSIONAL PROMPT LIBRARY (THE BRAIN) ---
 export const professionalPromptLibrary = {
     style: {
         'Cinematic': "Emulate a cinematic film still. Utilize dramatic, high-contrast lighting, a shallow depth of field to create bokeh, and apply professional color grading, often with teal and orange tones, to evoke a specific emotion.",
@@ -78,9 +155,4 @@ export const professionalPromptLibrary = {
         'Natural': "Present the subject in a natural environment. Use organic elements like plants, wood, or stone, and leverage natural lighting to create an authentic and grounded feel."
     }
 };
-
-export const styleEnhancements: Record<string, string> = {
-    'Splash': 'Create a dynamic high-speed action shot. The main subject should be captured as if suspended or floating in mid-air with a zero-gravity effect, showing dramatic splashes of liquid frozen in time. Lighting must highlight the droplets and liquid texture. This composition should be used by default unless another composition is explicitly chosen.',
-    'Clean Catalog': 'A clean, professional studio shot with a plain, solid light grey or white background. The lighting should be even and soft, showcasing the product clearly without distracting shadows. This style overrides any other background suggestions.',
-    'Ghost Mannequin': 'The clothing must be displayed using the "invisible mannequin" technique. It should have a realistic 3D shape as if worn, but the model is invisible. Show the inside of the back of the collar/neckline to complete the effect.',
-};
+// --- END: PROFESSIONAL PROMPT LIBRARY ---

@@ -30,3 +30,4 @@ export default function DashboardLayout({
     </AppContextProvider>
   );
 }
+export { default, dynamic, revalidate } from "../dashboard/layout";
