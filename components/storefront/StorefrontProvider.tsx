@@ -62,7 +62,20 @@ export const StorefrontProvider = ({
   const [storefrontState, setStorefrontState] =
     useState<StorefrontSettings>(storefront);
   const [productState, setProductState] = useState<Product[]>(products);
-  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>([]);
+  // Initialize cart from localStorage synchronously to avoid empty flash when navigating back
+  const initialCartKey = storefront.id || storefront.slug;
+  const [quoteItems, setQuoteItems] = useState<QuoteItem[]>(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        const raw = localStorage.getItem(`umkm_cart_${initialCartKey}`);
+        if (raw) {
+          const parsed = JSON.parse(raw) as QuoteItem[];
+          if (Array.isArray(parsed)) return parsed;
+        }
+      }
+    } catch {}
+    return [];
+  });
 
   useEffect(() => {
     setStorefrontState(storefront);
@@ -71,6 +84,36 @@ export const StorefrontProvider = ({
   useEffect(() => {
     setProductState(products);
   }, [products]);
+
+  // Persist quote/cart items per-storefront in localStorage so they survive refresh/navigation
+  const storageKey = useMemo(
+    () => `umkm_cart_${storefrontState.id || storefrontState.slug}`,
+    [storefrontState.id, storefrontState.slug],
+  );
+
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem(storageKey) : null;
+      if (raw) {
+        const parsed = JSON.parse(raw) as QuoteItem[];
+        if (Array.isArray(parsed)) {
+          setQuoteItems(parsed);
+        }
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(storageKey, JSON.stringify(quoteItems));
+      }
+    } catch {
+      // ignore storage errors
+    }
+  }, [storageKey, quoteItems]);
 
   const addToQuote = useCallback((item: QuoteItem) => {
     setQuoteItems((prev) => {

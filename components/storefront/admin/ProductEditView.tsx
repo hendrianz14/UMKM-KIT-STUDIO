@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import Image from 'next/image';
+import SafeImage from '../SafeImage';
 import PlusIcon from '../icons/PlusIcon';
 import StarIcon from '../icons/StarIcon';
 import ImagePlusIcon from '../icons/ImagePlusIcon';
@@ -540,7 +540,7 @@ const ProductEditView = ({ productToEdit, onBack }: ProductEditViewProps) => {
                   key={image.id}
                   className={`group relative overflow-hidden rounded-lg border ${product.coverImageId === image.id ? 'border-secondary ring-2 ring-secondary' : 'border-gray-200'}`}
                 >
-                  <Image
+                  <SafeImage
                     src={image.url}
                     alt={image.altText || product.name}
                     width={320}

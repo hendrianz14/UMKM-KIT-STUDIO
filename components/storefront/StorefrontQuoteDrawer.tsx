@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import Image from 'next/image';
+import SafeImage from './SafeImage';
 import { useStorefront } from './StorefrontProvider';
 import XIcon from './icons/XIcon';
 import TrashIcon from './icons/TrashIcon';
@@ -179,7 +179,7 @@ const StorefrontQuoteDrawer = ({
                   >
                     {image ? (
                       <div className="relative h-20 w-20 overflow-hidden rounded-md">
-                        <Image
+                        <SafeImage
                           src={image.url}
                           alt={image.altText || product.name}
                           fill

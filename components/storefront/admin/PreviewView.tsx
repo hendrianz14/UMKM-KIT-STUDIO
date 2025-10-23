@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import Image from 'next/image';
+import SafeImage from '../SafeImage';
 import Accordion from '../Accordion';
 import ArrowLeftIcon from '../icons/ArrowLeftIcon';
 import {
@@ -67,7 +67,7 @@ const PreviewView = ({ product, onBackToEdit }: PreviewViewProps) => {
           <div>
             <div className="relative aspect-square w-full overflow-hidden rounded-lg shadow-lg">
               {selectedImage ? (
-                <Image
+                <SafeImage
                   src={selectedImage.url}
                   alt={selectedImage.altText || product.name}
                   fill
@@ -87,7 +87,7 @@ const PreviewView = ({ product, onBackToEdit }: PreviewViewProps) => {
                     key={image.id}
                     className={`relative aspect-square overflow-hidden rounded-md border-2 ${selectedImage?.id === image.id ? 'border-secondary ring-2 ring-secondary' : 'border-transparent'}`}
                   >
-                    <Image
+                    <SafeImage
                       src={image.url}
                       alt={image.altText || `Thumbnail ${product.name}`}
                       fill

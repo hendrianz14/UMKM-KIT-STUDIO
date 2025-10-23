@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import Image from 'next/image';
+import SafeImage from './SafeImage';
 import type { ProductImage } from '@/lib/storefront/types';
 import XIcon from './icons/XIcon';
 import ImagePlusIcon from './icons/ImagePlusIcon';
@@ -48,7 +48,7 @@ const Lightbox = ({
         onClick={(event) => event.stopPropagation()}
       >
         <div className="relative h-[60vh] w-[80vw] max-w-4xl">
-          <Image
+          <SafeImage
             src={image.url}
             alt={image.altText || 'Gambar produk'}
             fill
@@ -89,7 +89,7 @@ const ImageGallery = ({ images, productName }: ImageGalleryProps) => {
         onClick={() => selectedImage && setIsLightboxOpen(true)}
       >
         {selectedImage && (
-          <Image
+          <SafeImage
             src={selectedImage.url}
             alt={selectedImage.altText || productName}
             fill
@@ -109,7 +109,7 @@ const ImageGallery = ({ images, productName }: ImageGalleryProps) => {
                 className={`aspect-square w-20 flex-shrink-0 overflow-hidden rounded-md border-2 transition focus:outline-none focus:ring-2 focus:ring-secondary sm:w-full ${selectedImage?.id === image.id ? 'border-secondary ring-2 ring-secondary' : 'border-transparent hover:border-gray-400'}`}
                 aria-label={`Gambar ${productName}`}
               >
-                <Image
+                <SafeImage
                   src={image.url}
                   alt={image.altText || productName}
                   width={160}

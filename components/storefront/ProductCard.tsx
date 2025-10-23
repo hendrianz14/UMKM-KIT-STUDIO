@@ -1,6 +1,6 @@
 'use client';
 
-import Image from 'next/image';
+import SafeImage from './SafeImage';
 import type { Product } from '@/lib/storefront/types';
 import { ProductStatus } from '@/lib/storefront/types';
 import { getProductPriceRange } from '@/lib/storefront/utils';
@@ -42,7 +42,7 @@ const ProductCard = ({ product, onSelect }: ProductCardProps) => {
     >
       <div className="relative aspect-square w-full overflow-hidden">
         {coverImage ? (
-          <Image
+          <SafeImage
             src={coverImage.url}
             alt={coverImage.altText || product.name}
             fill
