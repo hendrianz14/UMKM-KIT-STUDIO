@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import ArrowLeftIcon from '../icons/ArrowLeftIcon';
 import HomeIcon from '../icons/HomeIcon';
 import TagIcon from '../icons/TagIcon';
 import CogIcon from '../icons/CogIcon';
@@ -106,6 +108,16 @@ const StorefrontAdminView = () => {
       </aside>
 
       <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Back to Dashboard */}
+        <div className="bg-white border-b p-3">
+          <Link
+            href="/dashboard"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:text-secondary"
+          >
+            <ArrowLeftIcon />
+            <span>Kembali ke Dashboard</span>
+          </Link>
+        </div>
         <header className="sticky top-0 z-10 bg-white p-4 shadow-sm md:hidden">
           <h2 className="text-xl font-bold text-gray-800">
             {editingProduct ? 'Edit Produk' : activeLabel}

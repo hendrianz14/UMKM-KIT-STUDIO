@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
 import SafeImage from './SafeImage';
 import { useStorefront } from './StorefrontProvider';
 import XIcon from './icons/XIcon';
@@ -18,6 +18,8 @@ const StorefrontQuoteDrawer = ({
   isOpen,
   onClose,
 }: StorefrontQuoteDrawerProps) => {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const {
     storefront,
     products,
@@ -144,7 +146,7 @@ const StorefrontQuoteDrawer = ({
             </button>
           </div>
 
-          {quoteItems.length === 0 ? (
+          {!mounted || quoteItems.length === 0 ? (
             <div className="flex flex-1 items-center justify-center">
               <p className="text-gray-500">Ringkasan Anda kosong.</p>
             </div>
@@ -221,7 +223,7 @@ const StorefrontQuoteDrawer = ({
             </div>
           )}
 
-          {quoteItems.length > 0 && (
+          {mounted && quoteItems.length > 0 && (
             <div className="space-y-4 border-t p-4">
               {totalPrice > 0 && (
                 <div className="flex items-center justify-between font-semibold">

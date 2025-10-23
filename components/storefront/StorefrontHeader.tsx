@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useStorefront } from './StorefrontProvider';
 import CartIcon from './icons/CartIcon';
+import { useEffect, useState } from 'react';
 
 interface StorefrontHeaderProps {
   onQuoteClick: () => void;
@@ -10,6 +11,8 @@ interface StorefrontHeaderProps {
 
 const StorefrontHeader = ({ onQuoteClick }: StorefrontHeaderProps) => {
   const { storefront, quoteItems } = useStorefront();
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
   const quoteItemCount = quoteItems.reduce(
     (sum, item) => sum + item.quantity,
     0,
@@ -30,7 +33,7 @@ const StorefrontHeader = ({ onQuoteClick }: StorefrontHeaderProps) => {
           aria-label="Buka ringkasan pesanan"
         >
           <CartIcon />
-          {quoteItemCount > 0 && (
+          {mounted && quoteItemCount > 0 && (
             <span className="absolute -right-1.5 -top-1.5 inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-red-600 px-1.5 text-xs font-bold text-white">
               {quoteItemCount}
             </span>

@@ -173,7 +173,15 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
           <div className={`grid transition-all duration-300 ease-in-out ${isStorefrontOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
             <div className="overflow-hidden">
                 <div className="pt-2 pl-6 space-y-1">
-                  <NavItem icon={<BoxIcon className="w-5 h-5" />} label="Products" />
+                  <NavItem
+                    icon={<BoxIcon className="w-5 h-5" />}
+                    label="Products"
+                    onClick={() => {
+                      if (typeof window !== 'undefined') {
+                        window.location.href = '/storefront';
+                      }
+                    }}
+                  />
                   <NavItem icon={<HelpCircleIcon className="w-5 h-5" />} label="FAQ" />
                   <NavItem icon={<BarChartIcon className="w-5 h-5" />} label="Overview" />
                 </div>
