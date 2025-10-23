@@ -181,26 +181,78 @@ const ProductEditView = ({ productToEdit, onBack }: ProductEditViewProps) => {
     fileInputRef.current?.click();
   };
 
-  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  async function downscaleAndCompress(file: File, maxDim = 1600, quality = 0.8): Promise<string> {
+    const img = document.createElement('img');
+    const blobUrl = URL.createObjectURL(file);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = reject;
+        img.src = blobUrl;
+      });
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) throw new Error('Canvas not supported');
+      let { width, height } = img;
+      if (width > height && width > maxDim) {
+        height = Math.round((height * maxDim) / width);
+        width = maxDim;
+      } else if (height > width && height > maxDim) {
+        width = Math.round((width * maxDim) / height);
+        height = maxDim;
+      } else if (width === height && width > maxDim) {
+        width = maxDim;
+        height = maxDim;
+      }
+      canvas.width = width;
+      canvas.height = height;
+      ctx.drawImage(img, 0, 0, width, height);
+      // export as JPEG with quality
+      const dataUrl = canvas.toDataURL('image/jpeg', quality);
+      return dataUrl;
+    } finally {
+      URL.revokeObjectURL(blobUrl);
+    }
+  }
+
+  const handleImageUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
-    if (!files || files.length === 0) {
-      return;
+    if (!files || files.length === 0) return;
+
+    const userId = storefront.ownerUserId || 'guest';
+
+    const results: ProductImage[] = [];
+    for (const file of Array.from(files)) {
+      try {
+        const dataUrl = await downscaleAndCompress(file, 1600, 0.82);
+        const res = await fetch('/api/upload-image', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ dataUrl, userId }),
+        });
+        if (!res.ok) throw new Error('Upload failed');
+        const payload = await res.json();
+        results.push({
+          id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          url: payload.publicUrl as string,
+          altText: file.name,
+        });
+      } catch (e) {
+        // fallback to local preview if upload fails (optional): skip adding
+        // console.error('Image upload failed', e);
+      }
     }
 
-    const uploaded: ProductImage[] = Array.from(files).map((file) => ({
-      id: `img-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      url: URL.createObjectURL(file),
-      altText: file.name,
-    }));
-
-    setProduct((prev) => {
-      const nextImages = [...prev.images, ...uploaded];
-      return {
-        ...prev,
-        images: nextImages,
-        coverImageId: prev.coverImageId ?? nextImages[0]?.id,
-      };
-    });
+    if (results.length > 0) {
+      setProduct((prev) => {
+        const nextImages = [...prev.images, ...results];
+        return {
+          ...prev,
+          images: nextImages,
+          coverImageId: prev.coverImageId ?? nextImages[0]?.id,
+        };
+      });
+    }
   };
 
   const handleRemoveImage = (imageId: string) => {
