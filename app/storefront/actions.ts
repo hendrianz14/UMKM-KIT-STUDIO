@@ -111,12 +111,22 @@ export async function updateStorefrontSettingsAction(
     })
     .eq('id', storeId)
     .select('*')
-    .single();
+    .maybeSingle();
 
   if (error) {
+    // Tangani pelanggaran unik slug agar lebih ramah untuk UI
+    // Postgres unique_violation code: 23505
+    // PostgREST biasanya melampirkan code ini
+    if (typeof (error as any).code === 'string' && (error as any).code === '23505') {
+      throw new Error('SLUG_TAKEN');
+    }
     throw error;
   }
 
+  if (!data) {
+    // 0 rows matched the filter (id not found)
+    throw new Error('STORE_NOT_FOUND');
+  }
   const updated = mapStorefrontRow(data as StorefrontRow);
 
   revalidatePath(`/shop/${currentSettings.slug}`);

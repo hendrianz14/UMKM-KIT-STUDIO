@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Toast from '../Toast';
 import { useStorefront } from '../StorefrontProvider';
 import {
   StorefrontSettings,
@@ -17,6 +18,7 @@ const SettingsView = () => {
   const [slugError, setSlugError] = useState('');
   const [isCopied, setIsCopied] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [showSavedToast, setShowSavedToast] = useState(false);
   const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(
     Boolean(storefront.slug),
   );
@@ -97,9 +99,24 @@ const SettingsView = () => {
     }
 
     setPhoneError('');
-    await updateStorefrontSettings(formData);
-    setIsSaved(true);
-    setTimeout(() => setIsSaved(false), 2000);
+    try {
+      await updateStorefrontSettings(formData);
+      setIsSaved(true);
+      setShowSavedToast(true);
+      setTimeout(() => setIsSaved(false), 2000);
+    } catch (e: any) {
+      const message = String(e?.message || 'Gagal menyimpan pengaturan');
+      if (message === 'SLUG_TAKEN') {
+        setSlugError('Slug sudah digunakan. Silakan pilih slug lain.');
+        return;
+      }
+      if (message === 'STORE_NOT_FOUND') {
+        alert('Storefront tidak ditemukan. Muat ulang halaman atau hubungi admin.');
+        return;
+      }
+      // tampilkan error generik
+      alert(`Gagal menyimpan pengaturan: ${message}`);
+    }
   };
 
   const handleCopyLink = () => {
@@ -311,22 +328,28 @@ const SettingsView = () => {
             </div>
           )}
 
-          <div className="pt-5">
-            <div className="flex items-center justify-end">
-              {isSaved && (
-                <span className="mr-4 text-sm text-green-600">
-                  Pengaturan disimpan!
-                </span>
-              )}
-              <button
-                type="submit"
-                disabled={Boolean(slugError) || Boolean(phoneError)}
-                className="rounded-lg bg-secondary px-4 py-2 font-bold text-white shadow-md transition duration-300 hover:bg-primary disabled:cursor-not-allowed disabled:bg-gray-400"
-              >
-                Simpan Pengaturan
-              </button>
-            </div>
-          </div>
+      <div className="pt-5">
+        <div className="flex items-center justify-end">
+          {isSaved && (
+            <span className="mr-4 text-sm text-green-600">
+              Pengaturan disimpan!
+            </span>
+          )}
+          <button
+            type="submit"
+            disabled={Boolean(slugError) || Boolean(phoneError)}
+            className="rounded-lg bg-secondary px-4 py-2 font-bold text-white shadow-md transition duration-300 hover:bg-primary disabled:cursor-not-allowed disabled:bg-gray-400"
+          >
+            Simpan Pengaturan
+          </button>
+        </div>
+      </div>
+      {showSavedToast && (
+        <Toast
+          message="Pengaturan disimpan!"
+          onClose={() => setShowSavedToast(false)}
+        />
+      )}
         </form>
       </div>
     </>
