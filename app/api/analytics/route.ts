@@ -20,6 +20,18 @@ export async function POST(request: NextRequest) {
     const userAgent = request.headers.get('user-agent') ?? null;
     const forwardedFor = request.headers.get('x-forwarded-for') ?? null;
 
+    // Skip obvious bots/crawlers to keep counts clean
+    const ua = (userAgent || '').toLowerCase();
+    const isBot =
+      ua.includes('bot') ||
+      ua.includes('crawler') ||
+      ua.includes('spider') ||
+      ua.includes('facebookexternalhit') ||
+      ua.includes('preview');
+    if (isBot) {
+      return NextResponse.json({ ok: true });
+    }
+
     // Insert a simple event row. Expect the table to exist.
     const { error } = await supabase.from('analytics_events').insert({
       store_id: body.storeId,
@@ -40,4 +52,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false }, { status: 200 });
   }
 }
-
