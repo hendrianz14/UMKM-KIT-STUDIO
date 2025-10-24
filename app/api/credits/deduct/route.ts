@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
-import { createActionClient } from '@/lib/supabase/server'; // Switch to the secure, writable client
+import { createSupabaseServerClientWritable } from '@/utils/supabase/server'; // Secure, writable client
 
 // Force the route to run on the Node.js runtime for compatibility and stability.
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   // Use the action client which is designed for writable operations (auth, session refresh)
-  const supabase = createActionClient();
+  const supabase = await createSupabaseServerClientWritable();
 
   // 1. Securely get the user session
   const {

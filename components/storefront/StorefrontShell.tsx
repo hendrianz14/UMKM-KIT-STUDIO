@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Product, StorefrontSettings } from '@/lib/storefront/types';
 import { StorefrontProvider } from './StorefrontProvider';
 import StorefrontHeader from './StorefrontHeader';
 import StorefrontQuoteDrawer from './StorefrontQuoteDrawer';
+import { trackEvent } from '@/lib/analytics/client';
 
 interface StorefrontShellProps {
   storefront: StorefrontSettings;
@@ -18,6 +19,12 @@ const StorefrontShell = ({
   children,
 }: StorefrontShellProps) => {
   const [isQuoteOpen, setIsQuoteOpen] = useState(false);
+
+  useEffect(() => {
+    if (storefront?.id) {
+      trackEvent({ type: 'store_view', storeId: storefront.id });
+    }
+  }, [storefront?.id]);
 
   return (
     <StorefrontProvider storefront={storefront} products={products}>

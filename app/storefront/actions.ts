@@ -73,7 +73,7 @@ export async function loadStorefrontForAdmin(
     .from('products')
     .select('*')
     .eq('store_id', storefrontRow.id)
-    .order('updated_at', { ascending: false, nullsLast: true });
+    .order('updated_at', { ascending: false });
 
   if (productsError) {
     throw productsError;
@@ -117,7 +117,9 @@ export async function updateStorefrontSettingsAction(
     // Tangani pelanggaran unik slug agar lebih ramah untuk UI
     // Postgres unique_violation code: 23505
     // PostgREST biasanya melampirkan code ini
-    if (typeof (error as any).code === 'string' && (error as any).code === '23505') {
+    type WithCode = { code?: unknown };
+    const errWithCode = error as WithCode;
+    if (typeof errWithCode.code === 'string' && errWithCode.code === '23505') {
       throw new Error('SLUG_TAKEN');
     }
     throw error;

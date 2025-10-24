@@ -77,7 +77,7 @@ export async function POST(request: Request) {
         });
 
         // PERBAIKAN 3: Menggunakan `response.text` dan parsing yang aman
-        const jsonText = response.text;
+        const jsonText: string = String(response.text || "");
         let result: { caption: string };
 
         try {

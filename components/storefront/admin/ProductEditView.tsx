@@ -8,6 +8,7 @@ import ImagePlusIcon from '../icons/ImagePlusIcon';
 import ExternalLinkIcon from '../icons/ExternalLinkIcon';
 import EyeIcon from '../icons/EyeIcon';
 import PreviewView from './PreviewView';
+import ConfirmationDialog from './ConfirmationDialog';
 import { useStorefront } from '../StorefrontProvider';
 import {
   NewProductInput,
@@ -58,6 +59,7 @@ const generateCombinations = (groups: VariantGroup[]): VariantCombination[] => {
 };
 
 const emptyProduct: NewProductInput = {
+  storeId: '',
   name: '',
   shortDescription: '',
   longDescription: '',
@@ -84,6 +86,14 @@ const ProductEditView = ({ productToEdit, onBack }: ProductEditViewProps) => {
   const [isPreviewing, setIsPreviewing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [nameError, setNameError] = useState('');
+  const [confirmState, setConfirmState] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText?: string;
+    confirmButtonClass?: string;
+    onConfirm: () => void;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   useEffect(() => {
     if (!product.name.trim()) {
@@ -155,12 +165,51 @@ const ProductEditView = ({ productToEdit, onBack }: ProductEditViewProps) => {
   };
 
   const handlePriceTypeChange = (type: PriceType) => {
+    // Jangan hapus data ketika berpindah tipe harga.
+    // Hanya ubah flag priceType dan biarkan data keduanya tetap tersimpan.
     setProduct((prev) => ({
       ...prev,
       priceType: type,
-      variants:
-        type === PriceType.VARIANT ? prev.variants : { groups: [], combinations: [] },
     }));
+  };
+
+  const requestPriceTypeChange = (type: PriceType) => {
+    if (type === product.priceType) return;
+    const switchingToVariant = type === PriceType.VARIANT;
+    if (switchingToVariant) {
+      const hasSinglePrice =
+        (product.price ?? 0) > 0 || (product.strikethroughPrice ?? 0) > 0;
+      if (!hasSinglePrice) {
+        handlePriceTypeChange(type);
+        return;
+      }
+      setConfirmState({
+        isOpen: true,
+        title: 'Ubah ke Harga Berdasarkan Varian',
+        message:
+          'Harga tunggal akan diabaikan pada katalog, namun tetap tersimpan. Lanjutkan?',
+        confirmText: 'Ya, ubah ke Varian',
+        confirmButtonClass: 'bg-secondary hover:bg-primary',
+        onConfirm: () => handlePriceTypeChange(type),
+      });
+    } else {
+      const hasVariantData =
+        product.variants.groups.length > 0 ||
+        product.variants.combinations.length > 0;
+      if (!hasVariantData) {
+        handlePriceTypeChange(type);
+        return;
+      }
+      setConfirmState({
+        isOpen: true,
+        title: 'Ubah ke Harga Tunggal',
+        message:
+          'Variasi & kombinasi akan disembunyikan dari form, namun tetap tersimpan. Lanjutkan?',
+        confirmText: 'Ya, ubah ke Tunggal',
+        confirmButtonClass: 'bg-secondary hover:bg-primary',
+        onConfirm: () => handlePriceTypeChange(type),
+      });
+    }
   };
 
   const addBadge = (badge: string) => {
@@ -599,7 +648,8 @@ const ProductEditView = ({ productToEdit, onBack }: ProductEditViewProps) => {
                     height={320}
                     className="h-40 w-full object-cover"
                   />
-                  <div className="absolute inset-0 flex items-center justify-center gap-2 bg-black/30 opacity-0 transition group-hover:opacity-100">
+                  {/* Desktop hover actions */}
+                  <div className="absolute inset-0 hidden items-center justify-center gap-2 bg-black/30 opacity-0 transition sm:flex sm:opacity-0 sm:group-hover:opacity-100">
                     <button
                       type="button"
                       onClick={() => handleSetCover(image.id)}
@@ -611,6 +661,23 @@ const ProductEditView = ({ productToEdit, onBack }: ProductEditViewProps) => {
                       type="button"
                       onClick={() => handleRemoveImage(image.id)}
                       className="rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white"
+                    >
+                      Hapus
+                    </button>
+                  </div>
+                  {/* Mobile action bar (always visible) */}
+                  <div className="sm:hidden p-2 flex items-center justify-center gap-2 bg-gray-50">
+                    <button
+                      type="button"
+                      onClick={() => handleSetCover(image.id)}
+                      className="flex-1 rounded border bg-white px-2 py-1 text-xs font-semibold"
+                    >
+                      Jadikan Cover
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveImage(image.id)}
+                      className="flex-1 rounded bg-red-600 px-2 py-1 text-xs font-semibold text-white"
                     >
                       Hapus
                     </button>
@@ -690,7 +757,7 @@ const ProductEditView = ({ productToEdit, onBack }: ProductEditViewProps) => {
               <div className="mt-2 inline-flex rounded-lg border bg-gray-100 p-1">
                 <button
                   type="button"
-                  onClick={() => handlePriceTypeChange(PriceType.SINGLE)}
+                  onClick={() => requestPriceTypeChange(PriceType.SINGLE)}
                   className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
                     product.priceType === PriceType.SINGLE
                       ? 'bg-white text-secondary shadow'
@@ -701,7 +768,7 @@ const ProductEditView = ({ productToEdit, onBack }: ProductEditViewProps) => {
                 </button>
                 <button
                   type="button"
-                  onClick={() => handlePriceTypeChange(PriceType.VARIANT)}
+                  onClick={() => requestPriceTypeChange(PriceType.VARIANT)}
                   className={`rounded-md px-4 py-2 text-sm font-semibold transition ${
                     product.priceType === PriceType.VARIANT
                       ? 'bg-white text-secondary shadow'
@@ -813,6 +880,7 @@ const ProductEditView = ({ productToEdit, onBack }: ProductEditViewProps) => {
                           <div className="mt-3 flex gap-2">
                             <input
                               type="text"
+                              name={`variant-${group.id}`}
                               placeholder="Tambah opsi (Enter untuk simpan)"
                               className={inputStyles}
                               onKeyDown={(event) => {
@@ -1049,6 +1117,7 @@ const ProductEditView = ({ productToEdit, onBack }: ProductEditViewProps) => {
               <input
                 type="text"
                 placeholder="Tambah badge..."
+                id="badge-input"
                 className={inputStyles}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter') {
@@ -1186,6 +1255,16 @@ const ProductEditView = ({ productToEdit, onBack }: ProductEditViewProps) => {
           </div>
         </div>
       )}
+
+      <ConfirmationDialog
+        isOpen={confirmState.isOpen}
+        onClose={() => setConfirmState((s) => ({ ...s, isOpen: false }))}
+        onConfirm={confirmState.onConfirm}
+        title={confirmState.title}
+        message={confirmState.message}
+        confirmText={confirmState.confirmText}
+        confirmButtonClass={confirmState.confirmButtonClass}
+      />
     </>
   );
 };

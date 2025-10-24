@@ -1,5 +1,5 @@
 import { cert, getApp, getApps, initializeApp } from "firebase-admin/app";
-import { getStorage, type Bucket } from "firebase-admin/storage";
+import { getStorage } from "firebase-admin/storage";
 
 type FirebaseConfig = {
   projectId: string;
@@ -28,9 +28,11 @@ function readFirebaseConfig(): FirebaseConfig {
   };
 }
 
-let firebaseBucket: Bucket | null = null;
+type BucketType = ReturnType<ReturnType<typeof getStorage>["bucket"]>;
 
-export function getFirebaseBucket(): Bucket {
+let firebaseBucket: BucketType | null = null;
+
+export function getFirebaseBucket(): BucketType {
   if (firebaseBucket) {
     return firebaseBucket;
   }

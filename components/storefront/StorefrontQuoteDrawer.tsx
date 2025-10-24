@@ -8,6 +8,7 @@ import TrashIcon from './icons/TrashIcon';
 import WhatsAppIcon from './icons/WhatsAppIcon';
 import { formatCurrency } from '@/lib/storefront/utils';
 import { PriceType } from '@/lib/storefront/types';
+import { trackEvent } from '@/lib/analytics/client';
 
 interface StorefrontQuoteDrawerProps {
   isOpen: boolean;
@@ -51,6 +52,10 @@ const StorefrontQuoteDrawer = ({
 
   const handleSendQuote = () => {
     if (!storefront) return;
+
+    try {
+      trackEvent({ type: 'wa_click', storeId: storefront.id, source: 'cart' });
+    } catch {}
 
     const containsServiceItems = quoteItems.some((item) => {
       const product = products.find((candidate) => candidate.id === item.productId);

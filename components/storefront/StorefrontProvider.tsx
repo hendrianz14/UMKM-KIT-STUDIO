@@ -223,6 +223,7 @@ export const StorefrontProvider = ({
       }
 
       const duplicate: NewProductInput = {
+        storeId: storefrontState.id,
         name: newName,
         shortDescription: original.shortDescription,
         longDescription: original.longDescription,

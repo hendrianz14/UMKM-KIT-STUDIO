@@ -40,7 +40,7 @@ interface AppContextType {
     userApiKeyInfo: UserApiKeyState;
     setInitialData: (data: AppData) => void;
     handleSaveProject: (newProject: Omit<Project, 'id' | 'user_id' | 'created_at'>) => Promise<Project>;
-    handleCreditDeduction: (amount: number) => void;
+    handleCreditDeduction: (amount: number, generationId?: string | null) => Promise<void>;
     setSidebarOpen: (isOpen: boolean) => void;
     toggleSidebar: () => void;
     onNavigate: (page: 'dashboard' | 'generate-image' | 'settings' | 'generate-caption') => void;

@@ -23,6 +23,7 @@ import {
   convertNewlinesToParagraphs,
   formatCurrency,
 } from '@/lib/storefront/utils';
+import { trackEvent } from '@/lib/analytics/client';
 
 interface StorefrontProductDetailProps {
   storeSlug: string;
@@ -79,6 +80,15 @@ const StorefrontProductDetail = ({
 
     setSelectedOptions(initialOptions);
   }, [product]);
+
+  // Track product view
+  useEffect(() => {
+    try {
+      if (storefront?.id && product?.id) {
+        trackEvent({ type: 'product_view', storeId: storefront.id, productId: product.id });
+      }
+    } catch {}
+  }, [storefront?.id, product?.id]);
 
   const selectedVariant = useMemo<VariantCombination | null>(() => {
     if (!product || product.priceType !== PriceType.VARIANT) return null;
@@ -160,6 +170,11 @@ const StorefrontProductDetail = ({
 
   const handleQuickBuy = () => {
     if (isActionDisabled || isUnavailable || !storefront) return;
+
+    // Fire analytics for WhatsApp click from product page
+    try {
+      trackEvent({ type: 'wa_click', storeId: storefront.id, productId: product.id, source: 'product' });
+    } catch {}
 
     let message = '';
     const isService = priceInfo.isAskOnWA;

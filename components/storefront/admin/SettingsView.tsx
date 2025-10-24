@@ -104,8 +104,8 @@ const SettingsView = () => {
       setIsSaved(true);
       setShowSavedToast(true);
       setTimeout(() => setIsSaved(false), 2000);
-    } catch (e: any) {
-      const message = String(e?.message || 'Gagal menyimpan pengaturan');
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : 'Gagal menyimpan pengaturan';
       if (message === 'SLUG_TAKEN') {
         setSlugError('Slug sudah digunakan. Silakan pilih slug lain.');
         return;

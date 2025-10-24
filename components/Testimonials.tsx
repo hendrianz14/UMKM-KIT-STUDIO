@@ -36,7 +36,7 @@ const Testimonials: React.FC = () => {
                             style={{ animationDelay: `${index * 150}ms`}}
                         >
                         <StarRating rating={testimonial.rating} />
-                        <p className="text-gray-600 mt-4 flex-grow">"{testimonial.quote}"</p>
+                        <p className="text-gray-600 mt-4 flex-grow">&ldquo;{testimonial.quote}&rdquo;</p>
                         <div className="mt-6 flex items-center">
                             <img src={testimonial.avatarUrl} alt={testimonial.name} className="w-14 h-14 rounded-full mr-4" />
                             <div>

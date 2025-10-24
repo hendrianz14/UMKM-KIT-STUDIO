@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import SignIn from '@/components/SignIn';
 import { createSupabaseServerClientReadOnly } from '@/utils/supabase/server';
 
@@ -27,7 +28,9 @@ export default async function SignInPage({ searchParams }: SignInPageProps) {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 via-white to-slate-50 px-4 pt-28 pb-16">
-      <SignIn redirectTo={redirectTarget} />
+      <Suspense>
+        <SignIn redirectTo={redirectTarget} />
+      </Suspense>
     </div>
   );
 }

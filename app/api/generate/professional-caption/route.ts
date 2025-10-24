@@ -21,16 +21,18 @@ const generateProfessionalCaption = async (apiKey: string, image: string, subjec
 
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: [
-            { inlineData: { mimeType, data: base64Data } },
-            { text: "Gunakan instruksi sistem untuk membuat caption profesional singkat." }
-        ],
-        systemInstruction: {
-            parts: [{ text: systemPrompt }],
+        contents: {
+            parts: [
+                { inlineData: { mimeType, data: base64Data } },
+                { text: 'Gunakan instruksi sistem untuk membuat caption profesional singkat.' },
+            ],
+        },
+        config: {
+            systemInstruction: systemPrompt,
         },
     });
 
-    const caption = extractTextFromResponse(response).trim();
+    const caption = String(response.text || '').trim();
 
     if (!caption) {
         throw new Error('Model tidak menghasilkan caption.');

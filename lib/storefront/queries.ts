@@ -172,7 +172,7 @@ export async function fetchStorefrontBySlug(
     .from('products')
     .select('*')
     .eq('store_id', typedStorefrontRow.id)
-    .order('updated_at', { ascending: false, nullsLast: true });
+    .order('updated_at', { ascending: false });
 
   if (productsError) {
     throw productsError;

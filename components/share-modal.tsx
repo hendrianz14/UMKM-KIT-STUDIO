@@ -18,7 +18,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
   const [imageAspectRatio, setImageAspectRatio] = useState('3/4');
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && navigator.share && navigator.canShare) {
+    if (typeof window !== 'undefined' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
         try {
             const dummyFile = new File([""], "dummy.txt", { type: "text/plain" });
             if (navigator.canShare({ files: [dummyFile] })) {
@@ -56,6 +56,10 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
         setTimeout(() => setCaptionCopied(false), 2500);
       });
 
+      if (!project.imageUrl) {
+        setShareError('Gambar tidak tersedia.');
+        return;
+      }
       const response = await fetch(project.imageUrl);
       const blob = await response.blob();
       const file = new File([blob], 'image.jpg', { type: blob.type });
@@ -80,6 +84,10 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
 
   const handleDownloadImage = async () => {
     try {
+      if (!project.imageUrl) {
+        setShareError('Gambar tidak tersedia.');
+        return;
+      }
       const response = await fetch(project.imageUrl);
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
@@ -94,7 +102,9 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
       document.body.removeChild(a);
     } catch (downloadError) {
       console.error('Error downloading image:', downloadError);
-      window.open(project.imageUrl, '_blank');
+      if (project.imageUrl) {
+        window.open(project.imageUrl, '_blank');
+      }
     }
   };
 
@@ -160,7 +170,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
         <div className="flex-grow p-6 text-center overflow-y-auto">
             <div className="mb-4">
                 <img 
-                    src={project.imageUrl} 
+                    src={project.imageUrl || undefined} 
                     alt={project.title} 
                     className="w-full object-contain rounded-lg mx-auto shadow-md"
                     style={{ 

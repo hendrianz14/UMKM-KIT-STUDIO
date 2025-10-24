@@ -14,11 +14,7 @@ export async function POST(req: Request) {
   const email = String(form.get("email") || "").trim();
   const password = String(form.get("password") || "");
   const rememberRaw = form.get("remember");
-  const remember =
-    rememberRaw === "1" ||
-    rememberRaw === "on" ||
-    rememberRaw === "true" ||
-    rememberRaw === true;
+  const remember = ["1", "on", "true"].includes(String(rememberRaw));
   const requestedRedirect = String(form.get("redirect") || "/dashboard");
   const redirectPath = normalizeRedirect(requestedRedirect);
 

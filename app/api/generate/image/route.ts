@@ -122,7 +122,7 @@ export async function POST(request: Request) {
             
             let analysisResult: { style?: string; background_prompt?: string } = {};
             try {
-                analysisResult = JSON.parse(analysisResponse.text);
+                analysisResult = JSON.parse(String(analysisResponse.text || ""));
             } catch (jsonError) {
                 console.warn('Failed to parse analysis JSON:', analysisResponse.text, jsonError);
             }
@@ -153,7 +153,7 @@ Follow these rules:
                 contents: { parts: [{ text: `Describe a natural, culturally appropriate human interaction with "${detectedSubject}" in a concise phrase.` }] },
                 config: { systemInstruction: deepResearchSystemInstruction },
             });
-            const interactionText = interactionResponse.text.trim();
+            const interactionText = String(interactionResponse.text || "").trim();
             if (interactionText) {
                 compositionInstruction = interactionText;
             }
@@ -195,7 +195,9 @@ Follow these rules:
         });
 
         let imagePart;
-        for (const part of imageEditResponse.candidates[0].content.parts) {
+        const imageCandidates = imageEditResponse.candidates ?? [];
+        const firstParts = imageCandidates[0]?.content?.parts ?? [];
+        for (const part of firstParts) {
             if (part.inlineData) {
                 imagePart = part;
                 break;
@@ -208,7 +210,7 @@ Follow these rules:
         }
         
         let errorText = 'Tidak ada gambar yang dihasilkan oleh AI.';
-        for (const part of imageEditResponse.candidates[0].content.parts) {
+        for (const part of firstParts) {
             if (part.text) {
                 errorText = part.text;
                 break;

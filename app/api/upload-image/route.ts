@@ -10,8 +10,8 @@ export async function POST(req: NextRequest) {
     const owner = typeof userId === 'string' && userId.length > 0 ? userId : 'guest';
     const uploaded = await uploadProjectImage({ dataUrl, userId: owner });
     return NextResponse.json(uploaded);
-  } catch (error: any) {
-    return NextResponse.json({ error: error?.message || 'Upload failed' }, { status: 500 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Upload failed';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
-

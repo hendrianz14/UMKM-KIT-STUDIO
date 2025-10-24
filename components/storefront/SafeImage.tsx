@@ -20,9 +20,8 @@ export default function SafeImage(props: ImageProps) {
       alt={alt}
       onError={(e) => {
         setFailed(true);
-        onError?.(e as any);
+        onError?.(e);
       }}
     />
   );
 }
-

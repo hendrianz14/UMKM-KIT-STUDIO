@@ -10,16 +10,35 @@ import CheckCircleIcon from '../icons/CheckCircleIcon';
 const OverviewView = () => {
   const { products, storefront } = useStorefront();
 
-  const { publishedProducts, draftProducts, totalProducts } = useMemo(() => {
+  const {
+    publishedProducts,
+    draftProducts,
+    unlistedProducts,
+    unavailableProducts,
+    preOrderProducts,
+    totalProducts,
+  } = useMemo(() => {
     const published = products.filter(
       (product) => product.status === ProductStatus.PUBLISHED,
     ).length;
     const drafts = products.filter(
       (product) => product.status === ProductStatus.DRAFT,
     ).length;
+    const unlisted = products.filter(
+      (product) => product.status === ProductStatus.UNLISTED,
+    ).length;
+    const unavailable = products.filter(
+      (product) => product.status === ProductStatus.UNAVAILABLE,
+    ).length;
+    const preOrder = products.filter(
+      (product) => product.status === ProductStatus.PRE_ORDER,
+    ).length;
     return {
       publishedProducts: published,
       draftProducts: drafts,
+      unlistedProducts: unlisted,
+      unavailableProducts: unavailable,
+      preOrderProducts: preOrder,
       totalProducts: products.length,
     };
   }, [products]);
@@ -90,6 +109,24 @@ const OverviewView = () => {
               <span className="text-gray-600">Draft</span>
               <span className="font-semibold text-yellow-600">
                 {draftProducts}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Unlisted</span>
+              <span className="font-semibold text-gray-600">
+                {unlistedProducts}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Unavailable</span>
+              <span className="font-semibold text-red-600">
+                {unavailableProducts}
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-600">Pre-Order</span>
+              <span className="font-semibold text-purple-600">
+                {preOrderProducts}
               </span>
             </div>
           </div>
