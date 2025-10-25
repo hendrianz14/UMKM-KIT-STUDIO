@@ -7,7 +7,7 @@ import {
   StorefrontSettings,
   StorefrontStatus,
 } from '@/lib/storefront/types';
-import { containsProfanity, slugify } from '@/lib/storefront/utils';
+import { containsProfanity, slugify, isReservedSlug } from '@/lib/storefront/utils';
 import ClipboardIcon from '../icons/ClipboardIcon';
 import CheckCircleIcon from '../icons/CheckCircleIcon';
 
@@ -43,6 +43,9 @@ const SettingsView = () => {
     if (!value) return '';
     if (value.length < 3) {
       return 'URL Toko minimal harus 3 karakter.';
+    }
+    if (isReservedSlug(value)) {
+      return 'URL Toko tersebut tidak diperbolehkan.';
     }
     if (containsProfanity(value)) {
       return 'URL Toko mengandung kata yang tidak diizinkan.';
@@ -108,6 +111,10 @@ const SettingsView = () => {
       const message = e instanceof Error ? e.message : 'Gagal menyimpan pengaturan';
       if (message === 'SLUG_TAKEN') {
         setSlugError('Slug sudah digunakan. Silakan pilih slug lain.');
+        return;
+      }
+      if (message === 'SLUG_RESERVED') {
+        setSlugError('Slug tersebut tidak diperbolehkan. Silakan pilih slug lain.');
         return;
       }
       if (message === 'STORE_NOT_FOUND') {

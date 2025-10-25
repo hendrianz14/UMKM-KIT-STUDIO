@@ -3,7 +3,7 @@ import React from 'react';
 const CTASection: React.FC = () => {
   return (
     <section className="bg-secondary">
-      <div className="container mx-auto px-6 py-20 text-center">
+      <div className="container mx-auto px-4 sm:px-6 py-20 text-center">
         <h2 className="text-3xl md:text-4xl font-extrabold text-white">
           Siap Mengubah Bisnis Anda?
         </h2>

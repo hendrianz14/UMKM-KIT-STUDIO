@@ -158,6 +158,32 @@ created_at timestamptz default now()
 
 Format JSON yang digunakan oleh aplikasi mengikuti struktur pada `lib/storefront/types.ts`. Kolom `images`, `variants`, `specs`, dan `faq` dapat disesuaikan selama bentuknya kompatibel dengan tipe tersebut.
 
+### 10. `onboarding`
+
+Digunakan untuk menyimpan jawaban onboarding per pengguna serta menandai penyelesaian onboarding. Tambahkan tabel berikut:
+
+```sql
+create table if not exists public.onboarding (
+  user_id uuid primary key references auth.users(id) on delete cascade,
+  business_name text not null,
+  main_purpose text not null,
+  business_type text not null,
+  source text not null,
+  completed_at timestamptz default now()
+);
+
+-- Opsional: izinkan pengguna hanya mengakses catatan miliknya
+alter table public.onboarding enable row level security;
+create policy "Users can view own onboarding" on public.onboarding
+  for select using (auth.uid() = user_id);
+create policy "Users can upsert own onboarding" on public.onboarding
+  for insert with check (auth.uid() = user_id);
+create policy "Users can update own onboarding" on public.onboarding
+  for update using (auth.uid() = user_id);
+```
+
+Setelah tabel dibuat, dialog onboarding otomatis muncul untuk pengguna yang belum memiliki baris di tabel ini.
+
 ## Fitur Utama
 
 - **Generate Image**: mengedit gambar produk menggunakan Gemini. Kredit sistem akan berkurang 5 poin tiap generasi bila pengguna memakai kunci bawaan.

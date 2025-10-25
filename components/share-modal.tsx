@@ -172,7 +172,7 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
                 <img 
                     src={project.imageUrl || undefined} 
                     alt={project.title} 
-                    className="w-full object-contain rounded-lg mx-auto shadow-md"
+                    className="w-full object-contain rounded-lg mx-auto shadow-md max-h-[55vh] md:max-h-[60vh]"
                     style={{ 
                         aspectRatio: imageAspectRatio
                     }}

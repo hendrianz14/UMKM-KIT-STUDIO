@@ -2,12 +2,11 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 const Logo: React.FC = () => (
   <div className="flex items-center space-x-2">
-    <svg className="w-8 h-8 text-accent" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 2L2 7V17L12 22L22 17V7L12 2ZM12 4.43L19.57 9L12 13.57L4.43 9L12 4.43ZM3.5 8.09L12 12.91V20L3.5 15.18V8.09ZM20.5 15.18L12 20V12.91L20.5 8.09V15.18Z"/>
-    </svg>
+    <Image src="/umkmkitstudio.png" alt="UMKM KitStudio" width={32} height={32} className="w-8 h-8" />
     <span className="text-2xl font-bold text-primary transition-colors duration-300">UMKM KitStudio</span>
   </div>
 );
@@ -73,7 +72,7 @@ const HeadNav: React.FC = () => {
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 transition-all duration-300 bg-white shadow-md">
-      <div className="container mx-auto px-6 py-4">
+      <div className="container mx-auto px-4 sm:px-6 py-4">
         <div className="flex items-center justify-between">
           <a href="#" onClick={handleSmoothScroll}><Logo /></a>
           <div className="hidden lg:flex items-center space-x-8">

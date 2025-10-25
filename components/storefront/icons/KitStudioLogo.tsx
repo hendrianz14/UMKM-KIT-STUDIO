@@ -1,10 +1,20 @@
 'use client';
 
-import type { IconBaseProps } from 'react-icons';
-import { FiHexagon } from 'react-icons/fi';
+import Image from 'next/image';
 
-const KitStudioLogo = ({ className, ...rest }: IconBaseProps) => (
-  <FiHexagon className={['h-6 w-6 text-gray-400', className].filter(Boolean).join(' ')} {...rest} />
+type Props = {
+  className?: string;
+};
+
+const KitStudioLogo = ({ className }: Props) => (
+  <Image
+    src="/umkmkitstudio.png"
+    alt="UMKM KitStudio"
+    width={24}
+    height={24}
+    className={["h-6 w-6", className].filter(Boolean).join(' ')}
+    priority={false}
+  />
 );
 
 export default KitStudioLogo;

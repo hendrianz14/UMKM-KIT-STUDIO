@@ -160,31 +160,44 @@ export async function getDashboardData(): Promise<AppData | null> {
     .order("created_at", { ascending: false })
     .limit(20);
 
-  const creditHistory: CreditHistoryItem[] = (ledger ?? []).map((l: LedgerRow) => ({
-    id: l.id,
-    user_id: l.user_id,
-    type:
-      l.reason === "seed"
-        ? "seed"
-        : l.reason === "top_up"
-        ? "Top Up"
-        : l.reason === "refund"
-        ? "Refund"
-        : l.amount < 0
-        ? "Credit Usage"
-        : "Credit",
-    date: new Date(l.created_at).toISOString(),
-    amount: Number(l.amount),
-    transactionId: Number(l.transaction_no ?? l.id),
-  }));
+  const creditHistory: CreditHistoryItem[] = (ledger ?? []).map((l: LedgerRow) => {
+    const reason = (l.reason || "").toLowerCase();
+    let typeLabel: string;
+
+    if (["seed", "bonus", "welcome_bonus", "onboarding_bonus"].includes(reason)) {
+      typeLabel = "Bonus";
+    } else if (["top_up", "topup"].includes(reason)) {
+      typeLabel = "Top Up";
+    } else if (["refund", "reversal"].includes(reason)) {
+      typeLabel = "Refund";
+    } else if (["image_generation", "image", "generate_image"].includes(reason)) {
+      typeLabel = "Generate Gambar";
+    } else if (["caption_generation", "caption", "generate_caption"].includes(reason)) {
+      typeLabel = "Generate Caption";
+    } else if (Number(l.amount) < 0) {
+      typeLabel = "Penggunaan Kredit";
+    } else {
+      typeLabel = "Kredit";
+    }
+
+    return {
+      id: l.id,
+      user_id: l.user_id,
+      type: typeLabel,
+      date: new Date(l.created_at).toISOString(),
+      amount: Number(l.amount),
+      transactionId: Number(l.transaction_no ?? l.id),
+    } as CreditHistoryItem;
+  });
 
   // stats: weeklyWork & totalCreditsUsed
+  // weeklyWork dihitung dari berapa kali kredit berkurang (amount < 0) minggu ini
   const weekISO = startOfThisWeekISO();
   const { count: weeklyCount } = await supabase
-    .from("generations")
+    .from("credits_ledger")
     .select("id", { count: "exact", head: true })
     .eq("user_id", uid)
-    .eq("status", "succeeded")
+    .lt("amount", 0)
     .gte("created_at", weekISO);
 
   const totalCreditsUsed = creditHistory

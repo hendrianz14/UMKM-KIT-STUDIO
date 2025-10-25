@@ -4,11 +4,12 @@ import StorefrontCatalog from '@/components/storefront/StorefrontCatalog';
 import { fetchStorefrontBySlug } from '@/lib/storefront/queries';
 
 interface StorefrontPageProps {
-  params: { storeSlug: string };
+  params: Promise<{ storeSlug: string }>;
 }
 
 export default async function StorefrontPage({ params }: StorefrontPageProps) {
-  const payload = await fetchStorefrontBySlug(params.storeSlug);
+  const { storeSlug } = await params;
+  const payload = await fetchStorefrontBySlug(storeSlug);
 
   if (!payload) {
     notFound();

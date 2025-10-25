@@ -15,7 +15,6 @@ export async function trackEvent(payload: AnalyticsPayload) {
 
     if (typeof navigator !== 'undefined' && 'sendBeacon' in navigator) {
       const blob = new Blob([json], headers);
-      // @ts-ignore sendBeacon type
       navigator.sendBeacon(url, blob);
       return;
     }
@@ -31,4 +30,3 @@ export async function trackEvent(payload: AnalyticsPayload) {
     // swallow analytics errors
   }
 }
-

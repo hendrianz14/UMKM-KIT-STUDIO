@@ -45,7 +45,7 @@ const Hero: React.FC = () => {
             <div className="absolute bg-accent/20 rounded-full w-[500px] h-[500px] -bottom-40 -right-20 animate-pulse duration-[7000ms]"></div>
             <div className="absolute inset-0 bg-black/20 backdrop-blur-2xl"></div>
         </div>
-      <div className="container mx-auto px-6 text-center relative z-10">
+      <div className="container mx-auto px-4 sm:px-6 text-center relative z-10">
         <h1 className={`max-w-4xl mx-auto text-4xl md:text-6xl font-extrabold text-white leading-tight mb-4 transition-all duration-700 ease-out ${isLoaded ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'}`} style={{ textShadow: '0 2px 4px rgba(0,0,0,0.3)'}}>
           Buat Konten Sosial Media Profesional dengan AI
         </h1>

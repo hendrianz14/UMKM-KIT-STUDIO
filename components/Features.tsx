@@ -39,7 +39,7 @@ const Features: React.FC = () => {
 
   return (
     <section id="features" className="py-20 bg-white">
-      <div className="container mx-auto px-6">
+      <div className="container mx-auto px-4 sm:px-6">
         <div className="text-center mb-12">
           <h2 className="text-3xl md:text-4xl font-extrabold text-primary">Ciptakan Konten Viral dalam Sekejap</h2>
           <p className="mt-4 text-lg text-gray-600 max-w-2xl mx-auto">

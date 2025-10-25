@@ -22,6 +22,7 @@ import type {
   StorefrontPayload,
   StorefrontSettingsUpdate,
 } from '@/lib/storefront/types';
+import { slugify, isReservedSlug } from '@/lib/storefront/utils';
 
 async function getStorefrontRowById(storefrontId: string) {
   const supabase = await createSupabaseServerClientWritable();
@@ -45,27 +46,56 @@ async function getStorefrontRowById(storefrontId: string) {
 export async function loadStorefrontForAdmin(
   slug?: string,
 ): Promise<StorefrontPayload | null> {
-  if (slug) {
-    return fetchStorefrontBySlug(slug);
-  }
-
   const supabase = await createSupabaseServerClientWritable();
-  const { data, error } = await supabase
-    .from('storefront_settings')
-    .select('*')
-    .order('created_at', { ascending: true })
-    .limit(1)
-    .maybeSingle();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
 
-  if (error) {
-    throw error;
-  }
-
-  if (!data) {
+  if (userError || !user) {
     return null;
   }
 
-  const storefrontRow = data as StorefrontRow;
+  // Batasi storefront berdasarkan pemilik (user yang login)
+  let storefrontRow: StorefrontRow | null = null;
+
+  if (slug) {
+    const { data, error } = await supabase
+      .from('storefront_settings')
+      .select('*')
+      .eq('slug', slug)
+      .eq('owner_user_id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      // Jika PGRST116 (not found), anggap null
+      if ('code' in error && (error as { code?: string }).code === 'PGRST116') {
+        return null;
+      }
+      throw error;
+    }
+
+    if (!data) return null;
+    storefrontRow = data as StorefrontRow;
+  } else {
+    const { data, error } = await supabase
+      .from('storefront_settings')
+      .select('*')
+      .eq('owner_user_id', user.id)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      throw error;
+    }
+
+    if (!data) {
+      return null;
+    }
+
+    storefrontRow = data as StorefrontRow;
+  }
   const {
     data: productRows,
     error: productsError,
@@ -92,14 +122,47 @@ export async function updateStorefrontSettingsAction(
   updates: StorefrontSettingsUpdate,
 ) {
   const supabase = await createSupabaseServerClientWritable();
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    throw new Error('UNAUTHENTICATED');
+  }
   const currentRow = await getStorefrontRowById(storeId);
   const currentSettings = mapStorefrontRow(currentRow);
   const payload = mapStorefrontToUpdateRow(currentSettings, updates);
 
+  // Normalisasi slug di server agar konsisten dan aman
+  const desiredSlug = slugify(payload.slug);
+
+  // Tolak slug yang termasuk reserved
+  if (desiredSlug && isReservedSlug(desiredSlug)) {
+    throw new Error('SLUG_RESERVED');
+  }
+
+  // Jika slug berubah, cek apakah sudah digunakan oleh toko lain
+  if (desiredSlug && desiredSlug !== currentSettings.slug) {
+    const { data: existing, error: existingErr } = await supabase
+      .from('storefront_settings')
+      .select('id')
+      .eq('slug', desiredSlug)
+      .maybeSingle();
+
+    // Abaikan PGRST116 (not found). Lempar error lain.
+    if (existingErr && 'code' in existingErr && (existingErr as { code?: string }).code !== 'PGRST116') {
+      throw existingErr;
+    }
+
+    if (existing && (existing as { id: string }).id !== storeId) {
+      throw new Error('SLUG_TAKEN');
+    }
+  }
+
   const { data, error } = await supabase
     .from('storefront_settings')
     .update({
-      slug: payload.slug,
+      slug: desiredSlug || currentSettings.slug,
       name: payload.name,
       whatsapp_number: payload.whatsapp_number,
       status: payload.status,
@@ -110,6 +173,7 @@ export async function updateStorefrontSettingsAction(
       theme: payload.theme,
     })
     .eq('id', storeId)
+    .eq('owner_user_id', user.id)
     .select('*')
     .maybeSingle();
 
@@ -145,6 +209,29 @@ export async function createStorefrontProductAction(
   input: NewProductInput,
 ) {
   const supabase = await createSupabaseServerClientWritable();
+  // Pastikan user login dan merupakan pemilik store
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    throw new Error('UNAUTHENTICATED');
+  }
+  const { data: storeOwnerRow, error: ownerCheckError } = await supabase
+    .from('storefront_settings')
+    .select('id')
+    .eq('id', storeId)
+    .eq('owner_user_id', user.id)
+    .maybeSingle();
+  if (ownerCheckError) {
+    if ('code' in ownerCheckError && (ownerCheckError as { code?: string }).code === 'PGRST116') {
+      throw new Error('STORE_NOT_FOUND');
+    }
+    throw ownerCheckError;
+  }
+  if (!storeOwnerRow) {
+    throw new Error('FORBIDDEN');
+  }
   const { data: slugRows, error: slugsError } = await supabase
     .from('products')
     .select('slug')
@@ -178,6 +265,29 @@ export async function updateStorefrontProductAction(
   product: Product,
 ) {
   const supabase = await createSupabaseServerClientWritable();
+  // Pastikan user login dan merupakan pemilik store
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    throw new Error('UNAUTHENTICATED');
+  }
+  const { data: storeOwnerRow, error: ownerCheckError } = await supabase
+    .from('storefront_settings')
+    .select('id')
+    .eq('id', storeId)
+    .eq('owner_user_id', user.id)
+    .maybeSingle();
+  if (ownerCheckError) {
+    if ('code' in ownerCheckError && (ownerCheckError as { code?: string }).code === 'PGRST116') {
+      throw new Error('STORE_NOT_FOUND');
+    }
+    throw ownerCheckError;
+  }
+  if (!storeOwnerRow) {
+    throw new Error('FORBIDDEN');
+  }
   const updateRow = mapProductToUpdateRow({
     ...product,
     storeId,
@@ -206,6 +316,29 @@ export async function deleteStorefrontProductAction(
   productId: string,
 ) {
   const supabase = await createSupabaseServerClientWritable();
+  // Pastikan user login dan merupakan pemilik store
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+  if (userError || !user) {
+    throw new Error('UNAUTHENTICATED');
+  }
+  const { data: storeOwnerRow, error: ownerCheckError } = await supabase
+    .from('storefront_settings')
+    .select('id')
+    .eq('id', storeId)
+    .eq('owner_user_id', user.id)
+    .maybeSingle();
+  if (ownerCheckError) {
+    if ('code' in ownerCheckError && (ownerCheckError as { code?: string }).code === 'PGRST116') {
+      throw new Error('STORE_NOT_FOUND');
+    }
+    throw ownerCheckError;
+  }
+  if (!storeOwnerRow) {
+    throw new Error('FORBIDDEN');
+  }
   const { error } = await supabase
     .from('products')
     .delete()

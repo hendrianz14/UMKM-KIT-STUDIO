@@ -85,6 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
     const isContentPage = [
     'generate-image', 
     'textgenerator', 
+    'generate-text', 
     'generate-caption', 
     'generate-catalog', 
     'generate-whatsapp', 
@@ -143,11 +144,16 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
                   />
                   <NavItem 
                     icon={<TextIcon className="w-5 h-5" />} 
-                                        label="Generator Teks"
-                    active={['textgenerator', 'generate-caption', 'generate-catalog', 'generate-whatsapp', 'generate-email'].includes(currentPage)}
-                    onClick={() => onNavigate('generate-caption')}
+                    label="Generator Teks"
+                    active={['generate-text', 'textgenerator', 'generate-caption', 'generate-catalog', 'generate-whatsapp', 'generate-email'].includes(currentPage)}
+                    onClick={() => onNavigate('generate-text')}
                   />
-                  <NavItem icon={<GalleryIcon className="w-5 h-5" />} label="Galeri" />
+                  <NavItem 
+                    icon={<GalleryIcon className="w-5 h-5" />} 
+                    label="Galeri" 
+                    active={currentPage === 'gallery'}
+                    onClick={() => onNavigate('gallery')} 
+                  />
                   <NavItem icon={<EditorIcon className="w-5 h-5" />} label="Editor" />
                   <NavItem icon={<HistoryIcon className="w-5 h-5" />} label="History" />
                                                       <NavItem 

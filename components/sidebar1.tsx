@@ -77,7 +77,7 @@ interface SidebarProps {
 
 const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
   const pathname = usePathname();
-  const isGeneratePath = pathname.startsWith('/generate') || pathname.startsWith('/textgenerator');
+  const isGeneratePath = pathname.startsWith('/generate') || pathname.startsWith('/textgenerator') || pathname.startsWith('/generate-text');
   const [isGenerateOpen, setIsGenerateOpen] = useState(isGeneratePath);
 
   useEffect(() => {
@@ -144,8 +144,8 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
                 <NavItem
                   icon={<TextIcon className="w-5 h-5" />}
                   label="Generator Teks"
-                  href="/textgenerator"
-                  active={pathname.startsWith('/textgenerator')}
+                  href="/generate-text"
+                  active={pathname.startsWith('/generate-text') || pathname.startsWith('/textgenerator')}
                   onNavigate={handleNavigate}
                 />
                 <NavItem icon={<VideoIcon className="w-5 h-5" />} label="Video AI" />
@@ -154,7 +154,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
           </div>
         </div>
 
-        <NavItem icon={<GalleryIcon className="w-5 h-5" />} label="Galeri" />
+        <NavItem icon={<GalleryIcon className="w-5 h-5" />} label="Galeri" href="/gallery" active={pathname.startsWith('/gallery')} onNavigate={handleNavigate} />
         <NavItem icon={<EditorIcon className="w-5 h-5" />} label="Editor" />
         <NavItem icon={<HistoryIcon className="w-5 h-5" />} label="History" />
         <NavItem

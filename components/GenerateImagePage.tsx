@@ -119,6 +119,7 @@ const GenerateImagePage = () => {
     const [presetNameError, setPresetNameError] = useState<string | null>(null);
     const [useOwnApiKey, setUseOwnApiKey] = useState(false);
     const [isSavingProject, setIsSavingProject] = useState(false);
+    const [hasAutoSaved, setHasAutoSaved] = useState(false);
 
     const [projectTitle, setProjectTitle] = useState('');
     const [generatedCaption, setGeneratedCaption] = useState('');
@@ -397,6 +398,42 @@ const GenerateImagePage = () => {
         setLoadingMessage('');
     };
 
+    async function ensureDataUrl(src: string): Promise<string> {
+        if (src.startsWith('data:')) return src;
+        const res = await fetch(src);
+        const blob = await res.blob();
+        return await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(String(reader.result));
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+    }
+
+    const autoSaveAfterGenerate = async (finalImageUrl: string) => {
+        try {
+            const imageDataUrl = await ensureDataUrl(finalImageUrl);
+            const promptDetails = formatPromptDetails(selectedStyles, currentAdvancedStyles);
+            const autoTitle = detectedSubject ? `Proyek ${detectedSubject}` : `Proyek Gambar AI ${new Date().toLocaleTimeString()}`;
+
+            const newProject: Omit<Project, 'id' | 'user_id' | 'created_at'> = {
+                title: autoTitle,
+                imageUrl: imageDataUrl,
+                caption: '',
+                aspectRatio: aspectRatio,
+                promptDetails: promptDetails,
+                type: 'image',
+                promptFull: fullPromptForSaving,
+            };
+            await handleSaveProject(newProject);
+            setHasAutoSaved(true);
+            if (!projectTitle) setProjectTitle(autoTitle);
+        } catch (e) {
+            console.error('Auto-save failed:', e);
+            // Tampilkan notifikasi ringan; biarkan user simpan manual
+        }
+    };
+
     const handleGenerate = async () => {
         if (!originalImage || !user) {
             setError("Silakan unggah gambar terlebih dahulu.");
@@ -452,7 +489,10 @@ const GenerateImagePage = () => {
             setEditedImage(data.imageUrl);
             setFullPromptForSaving(data.finalPrompt);
             setGenerationSuccess(true);
-            setProjectTitle(detectedSubject ? `Proyek ${detectedSubject}` : `Proyek Gambar AI ${new Date().toLocaleTimeString()}`);
+            const autoTitle = detectedSubject ? `Proyek ${detectedSubject}` : `Proyek Gambar AI ${new Date().toLocaleTimeString()}`;
+            setProjectTitle(autoTitle);
+            // Simpan otomatis ke Firebase (via API projects) setelah sukses generate
+            void autoSaveAfterGenerate(data.imageUrl);
             
         } catch (err) {
             if (err instanceof Error && err.name !== 'AbortError') {
@@ -621,7 +661,7 @@ const GenerateImagePage = () => {
                     </button>
                 </div>
             )}
-            <div className="max-w-7xl mx-auto p-8">
+            <div className="max-w-7xl mx-auto py-8">
                 <div className="animate-fadeInUp">
                     <h1 className="text-4xl font-bold text-[#0D47A1]">Fotografi Profesional AI</h1>
                     <p className="text-[#1565C0] mt-2 mb-8">Ubah foto biasa menjadi fotografi profesional yang siap untuk media sosial.</p>
@@ -901,7 +941,7 @@ const GenerateImagePage = () => {
                                     </div>
                                     <button
                                         onClick={onSaveProject}
-                                        disabled={!projectTitle || isSavingProject}
+                                        disabled={!projectTitle || isSavingProject || hasAutoSaved}
                                         className="w-full flex items-center justify-center px-4 py-3 text-base font-bold text-white bg-[#0D47A1] hover:bg-[#1565C0] rounded-lg transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isSavingProject ? (
@@ -909,6 +949,8 @@ const GenerateImagePage = () => {
                                                 <Spinner size="h-5 w-5 mr-2" />
                                                 Menyimpan...
                                             </>
+                                        ) : hasAutoSaved ? (
+                                            'Tersimpan Otomatis'
                                         ) : (
                                             'Simpan ke Project'
                                         )}

@@ -62,9 +62,18 @@ export async function POST(request: Request) {
     }
 
     // 5. Format and return the successful response
+    const reason: string = String(result.ledger_reason || '');
+    const reasonKey = reason.toLowerCase();
+    const typeLabel =
+      reasonKey === 'image_generation' || reasonKey === 'image' || reasonKey === 'generate_image'
+        ? 'Generate Gambar'
+        : reasonKey === 'caption_generation' || reasonKey === 'caption' || reasonKey === 'generate_caption'
+        ? 'Generate Caption'
+        : 'Penggunaan Kredit';
+
     const newHistoryItem = {
       id: result.ledger_id,
-      type: 'Credit Usage',
+      type: typeLabel,
       date: result.ledger_created_at,
       amount: -amount,
       transactionId: result.ledger_transaction_no,

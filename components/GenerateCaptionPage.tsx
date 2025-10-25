@@ -45,7 +45,7 @@ const GenerateCaptionPage = () => {
     };
 
     return (
-        <div className="max-w-7xl mx-auto p-8 animate-fadeInUp">
+        <div className="max-w-7xl mx-auto py-8 animate-fadeInUp">
             <h1 className="text-4xl font-bold text-[#0D47A1]">AI Caption Generator</h1>
             <p className="text-[#1565C0] mt-2 mb-8">Buat caption media sosial yang menarik dalam hitungan detik.</p>
 

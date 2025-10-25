@@ -1,1 +1,1 @@
-export { dynamic, revalidate, default } from "../layout";
+export { default } from "../layout";

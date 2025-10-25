@@ -11,6 +11,52 @@ export const slugify = (text: string): string => {
     .replace(/-+$/, '');
 };
 
+// Beberapa slug yang tidak boleh dipakai untuk toko agar tidak bentrok
+// dengan rute aplikasi atau istilah umum.
+const reservedSlugs = new Set<string>([
+  // Sistem/Aplikasi umum
+  'admin', 'superadmin', 'panel', 'dashboard', 'setting', 'settings', 'konfigurasi',
+  'config', 'status', 'health', 'ping', 'version', 'v1', 'v2', 'docs', 'doc', 'api-docs',
+  'debug', 'test', 'error', '404', '500', 'maintenance',
+
+  // Autentikasi & akun
+  'auth', 'login', 'masuk', 'logout', 'keluar', 'register', 'registrasi', 'signup', 'daftar',
+  'akun', 'account', 'profil', 'profile', 'user', 'users', 'pengguna', 'verifikasi', 'verify',
+  'reset', 'password', 'lupa-password', 'forgot',
+
+  // Rute inti aplikasi/teknis
+  'api', 'graphql', 'webhook', 'webhooks', 'callback', 'oauth', 'oauth2',
+  'sitemap', 'robots', 'manifest', 'favicon',
+
+  // Statis/asset/file
+  'static', 'public', 'assets', 'asset', 'cdn', 'img', 'image', 'images', 'media', 'file',
+  'files', 'upload', 'uploads', 'download', 'downloads', 'css', 'js', 'fonts',
+
+  // Navigasi/halaman umum
+  'home', 'beranda', 'index', 'root', 'tentang', 'about', 'kontak', 'contact', 'hubungi',
+  'bantuan', 'support', 'pusat-bantuan', 'cs', 'faq', 'kebijakan', 'kebijakan-privasi', 'privasi',
+  'syarat', 'ketentuan', 'syarat-ketentuan', 'tos', 'privacy', 'terms',
+
+  // Perdagangan/toko umum
+  'storefront', 'store', 'toko', 'shop', 'katalog', 'catalog', 'kategori', 'categories',
+  'produk', 'product', 'products', 'koleksi', 'collection', 'collections', 'merek', 'brand',
+  'keranjang', 'cart', 'checkout', 'bayar', 'pembayaran', 'payment', 'pay', 'tagihan', 'invoice',
+  'kuitansi', 'resi', 'pesanan', 'order', 'orders', 'riwayat', 'history', 'riwayat-pesanan',
+  'pengiriman', 'kirim', 'antar', 'kurir', 'ongkir', 'retur', 'refund', 'komplain', 'klaim',
+  'promo', 'promosi', 'diskon', 'voucher', 'kupon', 'event', 'flashsale', 'wishlist', 'favorit',
+  'ulasan', 'review', 'rating', 'pencarian', 'cari', 'search',
+
+  // Konten/marketing
+  'blog', 'artikel', 'berita', 'news', 'galeri', 'gallery',
+
+  // Lain-lain umum yang sering dipakai
+  'app', 'apps', 'official', 'resmi', 'my', 'me', 'admin-panel', 'panel-admin',
+]);
+
+export const isReservedSlug = (slug: string): boolean => {
+  return reservedSlugs.has(slug);
+};
+
 export const formatCurrency = (amount: number): string => {
   return new Intl.NumberFormat('id-ID', {
     style: 'currency',

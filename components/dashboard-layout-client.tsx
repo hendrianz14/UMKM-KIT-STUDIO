@@ -43,7 +43,7 @@ const DashboardLayoutClient: React.FC<DashboardLayoutClientProps> = ({ children,
             )}
 
             <div className="fixed top-0 left-0 right-0 z-20 bg-[#F5F5F5]/80 backdrop-blur-md border-b border-gray-200">
-                <div className="max-w-7xl mx-auto px-8 lg:pl-72">
+                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:pr-8 lg:pl-72">
                     <Header 
                       onMenuClick={() => setIsSidebarOpen(true)} 
                       onFeedbackClick={() => setIsFeedbackModalOpen(true)}
@@ -53,7 +53,7 @@ const DashboardLayoutClient: React.FC<DashboardLayoutClientProps> = ({ children,
             </div>
 
             <div className="lg:pl-64">
-                <main className="px-8 pt-20">
+                <main className="px-4 sm:px-6 lg:px-8 pt-20">
                     {children}
                 </main>
             </div>
