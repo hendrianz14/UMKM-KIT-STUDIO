@@ -101,7 +101,7 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     const supabase = await supabaseRoute();
     const {
@@ -113,11 +113,72 @@ export async function GET() {
       return NextResponse.json({ error: 'Anda harus login untuk melihat galeri.' }, { status: 401 });
     }
 
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
+    const url = new URL(request.url);
+    const limitParam = url.searchParams.get('limit');
+    const offsetParam = url.searchParams.get('offset');
+    const countsParam = url.searchParams.get('counts');
+    const limit = Math.max(1, Math.min(100, Number(limitParam) || 0));
+    const offset = Math.max(0, Number(offsetParam) || 0);
+    const wantCounts = countsParam === '1' || countsParam === 'true';
+
+    let data;
+    let error;
+    let total: number | null = null;
+
+    async function countCategories() {
+      // images: image_url NOT NULL AND (caption IS NULL OR caption = '')
+      const imgRes = await supabase
+        .from('projects')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .not('image_url', 'is', null)
+        .or('caption.is.null,caption.eq.') as any;
+
+      // projects: image_url NOT NULL AND caption NOT NULL AND caption <> ''
+      const prjRes = await supabase
+        .from('projects')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .not('image_url', 'is', null)
+        .not('caption', 'is', null)
+        .neq('caption', '');
+
+      // texts: image_url IS NULL AND caption NOT NULL AND caption <> ''
+      const txtRes = await supabase
+        .from('projects')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', user.id)
+        .is('image_url', null)
+        .not('caption', 'is', null)
+        .neq('caption', '');
+
+      return {
+        images: imgRes.count || 0,
+        projects: prjRes.count || 0,
+        texts: txtRes.count || 0,
+      } as { images: number; projects: number; texts: number };
+    }
+
+    if (limit) {
+      const res = await supabase
+        .from('projects')
+        .select('*', { count: 'exact' })
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .range(offset, offset + limit - 1);
+      data = res.data as any[] | null;
+      error = res.error as any;
+      total = res.count ?? null;
+    } else {
+      const res = await supabase
+        .from('projects')
+        .select('*')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false });
+      data = res.data as any[] | null;
+      error = res.error as any;
+      total = data ? data.length : 0;
+    }
 
     if (error) {
       throw new Error(error.message);
@@ -137,6 +198,19 @@ export async function GET() {
       createdAt: project.created_at,
     }));
 
+    if (limit) {
+      const hasMore = typeof total === 'number' ? offset + projects.length < total : false;
+      if (wantCounts) {
+        const counts = await countCategories();
+        return NextResponse.json({ items: projects, total, hasMore, limit, offset, counts });
+      }
+      return NextResponse.json({ items: projects, total, hasMore, limit, offset });
+    }
+
+    if (wantCounts) {
+      const counts = await countCategories();
+      return NextResponse.json({ items: projects, total, counts });
+    }
     return NextResponse.json(projects);
   } catch (error) {
     console.error('Gallery retrieval error:', error);

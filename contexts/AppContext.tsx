@@ -43,7 +43,7 @@ interface AppContextType {
     handleCreditDeduction: (amount: number, generationId?: string | null) => Promise<void>;
     setSidebarOpen: (isOpen: boolean) => void;
     toggleSidebar: () => void;
-    onNavigate: (page: 'dashboard' | 'generate-image' | 'settings' | 'generate-caption' | 'generate-text' | 'gallery') => void;
+    onNavigate: (page: 'dashboard' | 'generate-image' | 'settings' | 'generate-caption' | 'generate-text' | 'gallery' | 'credits-history') => void;
     setUserApiKeyInfo: (info: UserApiKeyPayload) => void;
     refreshUserApiKeyInfo: () => Promise<void>;
 }
@@ -198,6 +198,7 @@ export const AppContextProvider = ({
       'generate-caption': '/generate-caption',
       'generate-text': '/generate-text',
       gallery: '/gallery',
+      'credits-history': '/credits-history',
       settings: '/settings',
     };
     router.push(pathMap[page]);

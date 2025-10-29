@@ -47,7 +47,9 @@ const ProjectsSection: React.FC<{ projects: Project[]; onShareClick: (project: P
     <h2 className="text-2xl font-bold text-[#0D47A1] mb-6">Project anda</h2>
     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
       {projects && projects.length > 0 ? (
-        projects.map(project => <ProjectCard key={project.id} project={project} onShareClick={onShareClick} />)
+        projects.slice(0, 3).map(project => (
+          <ProjectCard key={project.id} project={project} onShareClick={onShareClick} />
+        ))
       ) : (
         <>
           <ProjectCardPlaceholder />

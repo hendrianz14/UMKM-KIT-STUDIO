@@ -155,7 +155,12 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
                     onClick={() => onNavigate('gallery')} 
                   />
                   <NavItem icon={<EditorIcon className="w-5 h-5" />} label="Editor" />
-                  <NavItem icon={<HistoryIcon className="w-5 h-5" />} label="History" />
+                  <NavItem 
+                    icon={<HistoryIcon className="w-5 h-5" />} 
+                    label="History" 
+                    active={currentPage === 'credits-history'}
+                    onClick={() => onNavigate('credits-history')} 
+                  />
                                                       <NavItem 
                     icon={<KeyIcon className="w-5 h-5" />} 
                     label="Kunci API Pribadi" 

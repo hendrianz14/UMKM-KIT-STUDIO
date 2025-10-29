@@ -193,14 +193,49 @@ export async function getDashboardData(): Promise<AppData | null> {
   });
 
   // stats: weeklyWork & totalCreditsUsed
-  // weeklyWork dihitung dari berapa kali kredit berkurang (amount < 0) minggu ini
+  // weeklyWork dihitung dari aktivitas minggu ini: gambar (auto-save), project manual (gambar+caption), dan teks saja
   const weekISO = startOfThisWeekISO();
-  const { count: weeklyCount } = await supabase
-    .from("credits_ledger")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", uid)
-    .lt("amount", 0)
-    .gte("created_at", weekISO);
+
+  // Gambar auto-save: image_url IS NOT NULL AND (caption IS NULL OR caption = '')
+  const { count: imgAutoNullCaption } = await supabase
+    .from('projects')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', uid)
+    .not('image_url', 'is', null)
+    .is('caption', null)
+    .gte('created_at', weekISO);
+
+  const { count: imgAutoEmptyCaption } = await supabase
+    .from('projects')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', uid)
+    .not('image_url', 'is', null)
+    .eq('caption', '')
+    .gte('created_at', weekISO);
+
+  const imagesAutoCount = (imgAutoNullCaption || 0) + (imgAutoEmptyCaption || 0);
+
+  // Project manual: image_url IS NOT NULL AND caption IS NOT NULL AND caption <> ''
+  const { count: projectsManualCount } = await supabase
+    .from('projects')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', uid)
+    .not('image_url', 'is', null)
+    .not('caption', 'is', null)
+    .neq('caption', '')
+    .gte('created_at', weekISO);
+
+  // Teks saja: image_url IS NULL AND caption IS NOT NULL AND caption <> ''
+  const { count: textOnlyCount } = await supabase
+    .from('projects')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', uid)
+    .is('image_url', null)
+    .not('caption', 'is', null)
+    .neq('caption', '')
+    .gte('created_at', weekISO);
+
+  const weeklyCount = (imagesAutoCount || 0) + (projectsManualCount || 0) + (textOnlyCount || 0);
 
   const totalCreditsUsed = creditHistory
     .filter((h) => h.amount < 0)

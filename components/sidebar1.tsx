@@ -156,7 +156,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose }) => {
 
         <NavItem icon={<GalleryIcon className="w-5 h-5" />} label="Galeri" href="/gallery" active={pathname.startsWith('/gallery')} onNavigate={handleNavigate} />
         <NavItem icon={<EditorIcon className="w-5 h-5" />} label="Editor" />
-        <NavItem icon={<HistoryIcon className="w-5 h-5" />} label="History" />
+        <NavItem icon={<HistoryIcon className="w-5 h-5" />} label="History" href="/credits-history" active={pathname.startsWith('/credits-history')} onNavigate={handleNavigate} />
         <NavItem
           icon={<SettingsIcon className="w-5 h-5" />}
           label="Settings"

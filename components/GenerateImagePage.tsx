@@ -698,6 +698,106 @@ const GenerateImagePage = () => {
     const isCaptionDisabled = isCaptionLoading;
     const filteredPresets = presets.filter(p => p.category === detectedCategory);
 
+    // Canvas Original Controls: fit/fill/stretch + pan
+    type FitMode = 'fit' | 'fill' | 'stretch';
+    const [fitMode, setFitMode] = useState<FitMode>('fit');
+    const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const canvasWrapRef = useRef<HTMLDivElement | null>(null);
+    const sourceImgRef = useRef<HTMLImageElement | null>(null);
+    const draggingRef = useRef<{ dragging: boolean; lastX: number; lastY: number }>({ dragging: false, lastX: 0, lastY: 0 });
+
+    useEffect(() => {
+        if (!originalImage) return;
+        const img = new Image();
+        img.onload = () => {
+            sourceImgRef.current = img;
+            setPan({ x: 0, y: 0 });
+            drawCanvas();
+        };
+        img.src = originalImage;
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [originalImage, fitMode, aspectRatio]);
+
+    useEffect(() => {
+        const onResize = () => drawCanvas();
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    }, []);
+
+    useEffect(() => {
+        drawCanvas();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pan]);
+
+    const getCanvasSize = () => {
+        const wrap = canvasWrapRef.current;
+        if (!wrap) return { w: 0, h: 0 };
+        const rect = wrap.getBoundingClientRect();
+        return { w: Math.max(10, Math.floor(rect.width)), h: Math.max(10, Math.floor(rect.height)) };
+    };
+
+    const drawCanvas = () => {
+        const canvas = canvasRef.current;
+        const img = sourceImgRef.current;
+        if (!canvas || !img) return;
+        const { w: cw, h: ch } = getCanvasSize();
+        if (cw === 0 || ch === 0) return;
+        if (canvas.width !== cw || canvas.height !== ch) {
+            canvas.width = cw;
+            canvas.height = ch;
+        }
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+        ctx.save();
+        ctx.clearRect(0, 0, cw, ch);
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(0, 0, cw, ch);
+
+        const iw = img.naturalWidth;
+        const ih = img.naturalHeight;
+        if (iw === 0 || ih === 0) return;
+
+        let sx = 1, sy = 1;
+        if (fitMode === 'fit') {
+            const s = Math.min(cw / iw, ch / ih);
+            sx = sy = s;
+        } else if (fitMode === 'fill') {
+            const s = Math.max(cw / iw, ch / ih);
+            sx = sy = s;
+        } else if (fitMode === 'stretch') {
+            sx = cw / iw;
+            sy = ch / ih;
+        }
+
+        const dw = iw * sx;
+        const dh = ih * sy;
+        const dx = Math.floor((cw - dw) / 2 + pan.x);
+        const dy = Math.floor((ch - dh) / 2 + pan.y);
+        ctx.imageSmoothingQuality = 'high';
+        ctx.drawImage(img, 0, 0, iw, ih, dx, dy, dw, dh);
+        ctx.restore();
+    };
+
+    const onPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        draggingRef.current.dragging = true;
+        draggingRef.current.lastX = e.clientX;
+        draggingRef.current.lastY = e.clientY;
+        try { (e.target as HTMLCanvasElement).setPointerCapture(e.pointerId); } catch {}
+    };
+    const onPointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        if (!draggingRef.current.dragging) return;
+        const dx = e.clientX - draggingRef.current.lastX;
+        const dy = e.clientY - draggingRef.current.lastY;
+        draggingRef.current.lastX = e.clientX;
+        draggingRef.current.lastY = e.clientY;
+        setPan((p) => ({ x: p.x + dx, y: p.y + dy }));
+    };
+    const onPointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
+        draggingRef.current.dragging = false;
+        try { (e.target as HTMLCanvasElement).releasePointerCapture(e.pointerId); } catch {}
+    };
+
     return (
         <>
             <ErrorModal 
@@ -923,16 +1023,60 @@ const GenerateImagePage = () => {
                     <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
                         <div className="w-full">
                             <h2 className="text-xl font-bold text-[#0D47A1] mb-4 text-center">Original</h2>
-                            <div className={`${aspectRatioClasses[aspectRatio]} w-full bg-white rounded-2xl border border-gray-200 shadow-sm flex items-center justify-center p-2`}>
+                            <div ref={canvasWrapRef} className={`${aspectRatioClasses[aspectRatio]} w-full bg-white rounded-2xl border border-gray-200 shadow-sm p-2`}>
                                 {originalImage ? (
-                                    <img src={originalImage} alt="Original" className="w-full h-full object-contain rounded-lg" />
+                                    <canvas
+                                        ref={canvasRef}
+                                        className="w-full h-full rounded-lg touch-pan-y touch-pan-x cursor-move"
+                                        onPointerDown={onPointerDown}
+                                        onPointerMove={onPointerMove}
+                                        onPointerUp={onPointerUp}
+                                        onPointerCancel={onPointerUp}
+                                    />
                                 ) : (
-                                    <div className="text-center text-gray-400 p-4">
-                                        <ImageIcon className="w-16 h-16 mx-auto" />
-                                        <p className="mt-2 text-sm">Unggah gambar untuk memulai</p>
+                                    <div className="h-full w-full flex items-center justify-center text-center text-gray-400">
+                                        <div className="p-4">
+                                            <ImageIcon className="w-16 h-16 mx-auto" />
+                                            <p className="mt-2 text-sm">Unggah gambar untuk memulai</p>
+                                        </div>
                                     </div>
                                 )}
                             </div>
+                            {originalImage && (
+                                <div className="mt-3">
+                                    <div className="text-center text-xs font-semibold text-gray-600 mb-2">
+                                        Penyesuaian kanvas
+                                    </div>
+                                    <div className="flex justify-center">
+                                        <div className="inline-flex rounded-full border border-[#0D47A1] bg-white overflow-hidden" role="tablist" aria-label="Penyesuaian kanvas">
+                                            <button
+                                                type="button"
+                                                onClick={() => { setFitMode('fit'); setPan({ x: 0, y: 0 }); drawCanvas(); }}
+                                                aria-pressed={fitMode==='fit'}
+                                                className={`px-4 py-1.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0D47A1] transition-colors ${fitMode==='fit' ? 'bg-[#0D47A1] text-white' : 'text-[#0D47A1] hover:bg-blue-50'}`}
+                                            >
+                                                Fit
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setFitMode('fill'); setPan({ x: 0, y: 0 }); drawCanvas(); }}
+                                                aria-pressed={fitMode==='fill'}
+                                                className={`px-4 py-1.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0D47A1] transition-colors ${fitMode==='fill' ? 'bg-[#0D47A1] text-white' : 'text-[#0D47A1] hover:bg-blue-50'}`}
+                                            >
+                                                Fill
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => { setFitMode('stretch'); setPan({ x: 0, y: 0 }); drawCanvas(); }}
+                                                aria-pressed={fitMode==='stretch'}
+                                                className={`px-4 py-1.5 text-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#0D47A1] transition-colors ${fitMode==='stretch' ? 'bg-[#0D47A1] text-white' : 'text-[#0D47A1] hover:bg-blue-50'}`}
+                                            >
+                                                Stretch
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                         
                         <div className="w-full">
