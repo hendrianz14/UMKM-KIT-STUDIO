@@ -140,7 +140,8 @@ export async function POST(request: Request) {
         const moodDetail = getProfessionalDetail('mood', selectedStyles.mood);
 
         let compositionInstruction = compositionDetail;
-        if (selectedStyles.composition === 'Human Element' && detectedSubject) {
+        // Ketika fokus produk aktif, abaikan komposisi Human Element agar tidak memasukkan manusia
+        if (!isolateProduct && selectedStyles.composition === 'Human Element' && detectedSubject) {
             const deepResearchSystemInstruction = `You are an expert in product photography and cultural anthropology. Your task is to describe a natural, context-aware, and culturally appropriate human interaction with a given subject. The output must be a concise phrase suitable for an image generation prompt.
 
 Follow these rules:
@@ -158,6 +159,12 @@ Follow these rules:
                 compositionInstruction = interactionText;
             }
         }
+        if (isolateProduct) {
+            // Pastikan instruksi komposisi menekankan tanpa elemen manusia
+            compositionInstruction = compositionInstruction
+                ? `${compositionInstruction}. Do not include any people, hands, or human elements.`
+                : 'Isolated product-only composition without any people, hands, or human elements.';
+        }
 
         const finalBackgroundPrompt = selectedStyles.style === 'Clean Catalog'
             ? 'a clean, professional studio shot with a plain, solid light grey or white background and even, soft lighting.'
@@ -171,14 +178,14 @@ Follow these rules:
         ].filter(Boolean) as string[];
 
         let finalPrompt: string;
-        if (detectedCategory === 'Produk' && isolateProduct) {
+        if ((detectedCategory === 'Produk' || detectedCategory === 'Makanan' || detectedCategory === 'Minuman') && isolateProduct) {
             const isClothing =
                 detectedSubject &&
                 ['baju', 'kemeja', 'gaun', 'jaket', 'celana', 'rok', 'pakaian'].some((keyword) =>
                     detectedSubject.toLowerCase().includes(keyword),
                 );
             const clothingInstruction = isClothing ? `SPECIAL INSTRUCTION: ${styleEnhancements['Ghost Mannequin']}` : '';
-            finalPrompt = `CRITICAL TASK: Perfectly isolate the main subject, a '${detectedSubject}', from everything else. Reconstruct any obscured parts. Place it onto a new background: '${finalBackgroundPrompt}'. ${clothingInstruction} Apply these professional aesthetic principles:\n${promptClauses.map((clause) => `- ${clause}`).join('\n')}\nMust be hyper-realistic.\n\nABSOLUTE RULE: Do not generate any new text, words, letters, logos, or watermarks. Preserve any text that is part of the original subject, but do not add any extra text elements to the image.`;
+            finalPrompt = `CRITICAL TASK: Perfectly isolate the main subject, a '${detectedSubject}', from everything else. Remove any people, hands, or human elements in the scene. Reconstruct any obscured parts. Place it onto a new background: '${finalBackgroundPrompt}'. ${clothingInstruction} Apply these professional aesthetic principles:\n${promptClauses.map((clause) => `- ${clause}`).join('\n')}\nMust be hyper-realistic.\n\nABSOLUTE RULE: Do not generate any new text, words, letters, logos, or watermarks. Preserve any text that is part of the original subject, but do not add any extra text elements to the image.`;
         } else {
             finalPrompt = `Task: Transform this image into a professional, hyper-realistic photograph. The main subject must be perfectly integrated into a new background described as: '${finalBackgroundPrompt}'.\n\nApply the following professional photographic principles:\n${promptClauses.map((clause) => `- ${clause}`).join('\n')}\n\nABSOLUTE RULE: Do not generate any new text, words, letters, logos, or watermarks. Preserve any text that is part of the original subject, but do not add any extra text elements to the image.`;
         }

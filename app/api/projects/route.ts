@@ -34,10 +34,22 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Anda harus login untuk menyimpan proyek.' }, { status: 401 });
     }
 
-    uploadedImage = await uploadProjectImage({
-      dataUrl: projectData.imageUrl,
-      userId: user.id,
-    });
+    let finalImageUrl: string | null = null;
+    let finalStoragePath: string | null = null;
+
+    // Jika imageUrl adalah data URL, upload ke Firebase Storage.
+    // Jika imageUrl adalah URL biasa (http/https), simpan URL apa adanya tanpa upload ulang.
+    if (projectData.imageUrl?.startsWith('data:')) {
+      uploadedImage = await uploadProjectImage({
+        dataUrl: projectData.imageUrl,
+        userId: user.id,
+      });
+      finalImageUrl = uploadedImage.publicUrl;
+      finalStoragePath = uploadedImage.storagePath;
+    } else {
+      finalImageUrl = projectData.imageUrl;
+      finalStoragePath = null;
+    }
 
     const { data, error } = await supabase
       .from('projects')
@@ -45,8 +57,8 @@ export async function POST(request: Request) {
         title: projectData.title,
         type: projectData.type,
         caption: projectData.caption,
-        image_url: uploadedImage.publicUrl,
-        image_storage_path: uploadedImage.storagePath,
+        image_url: finalImageUrl,
+        image_storage_path: finalStoragePath,
         aspect_ratio: projectData.aspectRatio,
         prompt_details: projectData.promptDetails ?? null,
         prompt_full: projectData.promptFull ?? null,
@@ -69,8 +81,8 @@ export async function POST(request: Request) {
       promptDetails: data.prompt_details,
       promptFull: data.prompt_full,
       type: data.type,
-      userId: data.user_id,
-      createdAt: data.created_at,
+      user_id: data.user_id,
+      created_at: data.created_at,
     });
   } catch (error) {
     if (uploadedImage) {
@@ -132,4 +144,3 @@ export async function GET() {
     return NextResponse.json({ error: `Failed to retrieve gallery. ${errorMessage}` }, { status: 500 });
   }
 }
-

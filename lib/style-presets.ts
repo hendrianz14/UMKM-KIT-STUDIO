@@ -26,13 +26,13 @@ const STYLE_PRESETS: Record<StylePresetKey, StyleOption[]> = {
     },
   ],
   Food: [
-        { category: 'style', name: 'Gaya Fotografi Makanan', options: ['Dark & Moody', 'Minimalist', 'Rustic', 'Clean & Bright', 'Food Porn'] },
+        { category: 'style', name: 'Gaya Fotografi Makanan', options: ['Clean Catalog', 'Dark & Moody', 'Minimalist', 'Rustic', 'Clean & Bright', 'Food Porn'] },
         { category: 'lighting', name: 'Pencahayaan', options: ['Natural Light', 'Soft Light', 'Backlit', 'Hard Shadow'] },
         { category: 'composition', name: 'Komposisi', options: ['Top-down', 'Close-up', '45-Degree Angle', 'Human Element'] },
         { category: 'mood', name: 'Suasana', options: ['Lezat', 'Segar', 'Hangat', 'Elegan', 'Rumahan'] },
     ],
     Drink: [
-        { category: 'style', name: 'Gaya Fotografi Minuman', options: ['Splash', 'Minimalist', 'Lifestyle', 'Dark & Moody'] },
+        { category: 'style', name: 'Gaya Fotografi Minuman', options: ['Clean Catalog', 'Splash', 'Minimalist', 'Lifestyle', 'Dark & Moody'] },
         { category: 'lighting', name: 'Pencahayaan', options: ['Backlit', 'Natural Light', 'Studio Light', 'Hard Shadow'] },
         { category: 'composition', name: 'Komposisi', options: ['Close-up', 'Garnishes', 'Human Element', 'Top-down'] },
         { category: 'mood', name: 'Suasana', options: ['Menyegarkan', 'Hangat', 'Elegan', 'Santai'] },

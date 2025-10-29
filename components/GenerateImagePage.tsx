@@ -13,6 +13,64 @@ const Spinner: React.FC<{ size?: string }> = ({ size = 'h-8 w-8' }) => (
     </svg>
 );
 
+// Normalisasi pesan error agar mudah dipahami (Bahasa Indonesia)
+function normalizeErrorMessage(raw: unknown): string {
+    try {
+        const asString = typeof raw === 'string' ? raw : (raw instanceof Error ? raw.message : JSON.stringify(raw));
+        let parsed: any = null;
+        const braceIndex = asString.indexOf('{');
+        if (braceIndex >= 0) {
+            const jsonSlice = asString.slice(braceIndex);
+            try { parsed = JSON.parse(jsonSlice); } catch {}
+        }
+
+        const code = parsed?.error?.code ?? parsed?.code;
+        const status = (parsed?.error?.status ?? parsed?.status ?? '').toString();
+        const msg = (parsed?.error?.message ?? parsed?.message ?? asString).toString();
+        const lower = msg.toLowerCase();
+
+        // Kuota / Rate limit
+        if (code === 429 || status === 'RESOURCE_EXHAUSTED' || lower.includes('quota') || lower.includes('rate limit')) {
+            const retryInfo = Array.isArray(parsed?.details)
+                ? parsed.details.find((d: any) => typeof d?.['@type'] === 'string' && d['@type'].includes('RetryInfo'))
+                : null;
+            let retryText = '';
+            const retryDelay = retryInfo?.retryDelay || parsed?.retryDelay;
+            if (typeof retryDelay === 'string') {
+                const seconds = retryDelay.replace(/[^0-9]/g, '');
+                if (seconds) retryText = ` Coba lagi dalam ${seconds} detik.`;
+            }
+            return `Kuota penggunaan telah terlampaui. Silakan periksa paket dan detail penagihan Anda.${retryText}`;
+        }
+
+        // Tidak ada atau salah kunci API / izin
+        if (code === 401 || lower.includes('api key') || lower.includes('unauthorized')) {
+            return 'Kunci API tidak valid atau tidak memiliki izin. Periksa kunci API Anda.';
+        }
+
+        if (code === 403 || lower.includes('forbidden')) {
+            return 'Akses ditolak. Periksa izin atau paket langganan Anda.';
+        }
+
+        // Jaringan
+        if (lower.includes('failed to fetch') || lower.includes('network')) {
+            return 'Koneksi jaringan bermasalah. Periksa internet Anda dan coba lagi.';
+        }
+
+        // Server error
+        if (typeof code === 'number' && code >= 500) {
+            return 'Terjadi kesalahan pada server. Silakan coba beberapa saat lagi.';
+        }
+
+        const prefix = braceIndex > 0 ? asString.slice(0, braceIndex).trim() : '';
+        if (prefix && prefix.length < 140) return prefix;
+
+        return msg || 'Terjadi kesalahan. Silakan coba lagi.';
+    } catch {
+        return 'Terjadi kesalahan. Silakan coba lagi.';
+    }
+}
+
 const LoadingComponent: React.FC<{ message: string }> = ({ message }) => (
     <div className="absolute inset-0 bg-gray-50/80 rounded-xl flex flex-col items-center justify-center backdrop-blur-sm p-4 z-10">
         <Spinner />
@@ -44,7 +102,7 @@ const ErrorModal: React.FC<{ isOpen: boolean; onClose: () => void; message: stri
                     <XIcon className="h-6 w-6 text-red-600" strokeWidth="2.5" />
                 </div>
                 <h3 className="text-xl font-bold text-[#0D47A1] mt-4">Terjadi Kesalahan</h3>
-                <p className="text-gray-600 mt-2 mb-6 text-sm">{message}</p>
+                <p className="text-gray-600 mt-2 mb-6 text-sm">{normalizeErrorMessage(message)}</p>
                 <button 
                     onClick={onClose} 
                     className="w-full px-4 py-2 font-semibold text-white bg-[#0D47A1] rounded-lg hover:bg-[#1565C0] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#0D47A1]"
@@ -71,7 +129,7 @@ const UserApiErrorModal: React.FC<{
                     <KeyIcon className="h-6 w-6 text-red-600" strokeWidth="2" />
                 </div>
                 <h3 className="text-xl font-bold text-[#0D47A1] mt-4">Masalah Kunci API</h3>
-                <p className="text-gray-600 mt-2 mb-6 text-sm">{message}</p>
+                <p className="text-gray-600 mt-2 mb-6 text-sm">{normalizeErrorMessage(message)}</p>
                 <div className="space-y-3">
                     <button 
                         onClick={onGoToSettings} 
@@ -119,7 +177,6 @@ const GenerateImagePage = () => {
     const [presetNameError, setPresetNameError] = useState<string | null>(null);
     const [useOwnApiKey, setUseOwnApiKey] = useState(false);
     const [isSavingProject, setIsSavingProject] = useState(false);
-    const [hasAutoSaved, setHasAutoSaved] = useState(false);
 
     const [projectTitle, setProjectTitle] = useState('');
     const [generatedCaption, setGeneratedCaption] = useState('');
@@ -170,6 +227,13 @@ const GenerateImagePage = () => {
             clearLoadingSequence();
         };
     }, [clearLoadingSequence]);
+
+    // Jika fokus produk diaktifkan dan komposisi terpilih adalah Human Element, hapus pilihan tsb
+    useEffect(() => {
+        if (isolateProduct && selectedStyles.composition === 'Human Element') {
+            setSelectedStyles((prev) => ({ ...prev, composition: null }));
+        }
+    }, [isolateProduct, selectedStyles.composition]);
 
     const handleGenericError = useCallback((errorMessage: string, context: 'user' | 'system') => {
         if (context === 'user') {
@@ -426,7 +490,6 @@ const GenerateImagePage = () => {
                 promptFull: fullPromptForSaving,
             };
             await handleSaveProject(newProject);
-            setHasAutoSaved(true);
             if (!projectTitle) setProjectTitle(autoTitle);
         } catch (e) {
             console.error('Auto-save failed:', e);
@@ -479,7 +542,7 @@ const GenerateImagePage = () => {
 
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.error);
+                throw new Error(typeof data?.error === 'string' ? data.error : JSON.stringify(data));
             }
             
             if (!useOwnApiKey) {
@@ -521,7 +584,7 @@ const GenerateImagePage = () => {
             });
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.error);
+                throw new Error(typeof data?.error === 'string' ? data.error : JSON.stringify(data));
             }
             setGeneratedCaption(data.caption);
         } catch (err) {
@@ -786,7 +849,10 @@ const GenerateImagePage = () => {
                                             <div key={category}>
                                                 <h4 className="text-sm font-semibold text-gray-700 mb-2">{name}</h4>
                                                 <div className="flex flex-wrap gap-2">
-                                                    {options.map(option => (
+                                                    {(category === 'composition' && isolateProduct
+                                                        ? options.filter((o) => o !== 'Human Element')
+                                                        : options
+                                                    ).map(option => (
                                                         <button
                                                             key={option}
                                                             onClick={() => handleStyleSelect(category, option)}
@@ -802,7 +868,7 @@ const GenerateImagePage = () => {
                             </div>
                         </div>
                         
-                        {detectedCategory === 'Produk' && !isAnalyzingStyles && (
+                        {(detectedCategory === 'Produk' || detectedCategory === 'Makanan' || detectedCategory === 'Minuman') && !isAnalyzingStyles && (
                              <div className="p-3 bg-blue-50 rounded-lg">
                                  <label htmlFor="isolate-product-toggle" className="flex items-center justify-between w-full cursor-pointer">
                                      <span className="text-sm font-semibold text-[#0D47A1] pr-4">
@@ -941,7 +1007,7 @@ const GenerateImagePage = () => {
                                     </div>
                                     <button
                                         onClick={onSaveProject}
-                                        disabled={!projectTitle || isSavingProject || hasAutoSaved}
+                                        disabled={!projectTitle || isSavingProject}
                                         className="w-full flex items-center justify-center px-4 py-3 text-base font-bold text-white bg-[#0D47A1] hover:bg-[#1565C0] rounded-lg transition-all shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         {isSavingProject ? (
@@ -949,8 +1015,6 @@ const GenerateImagePage = () => {
                                                 <Spinner size="h-5 w-5 mr-2" />
                                                 Menyimpan...
                                             </>
-                                        ) : hasAutoSaved ? (
-                                            'Tersimpan Otomatis'
                                         ) : (
                                             'Simpan ke Project'
                                         )}
