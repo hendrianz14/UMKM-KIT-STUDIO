@@ -128,6 +128,8 @@ export async function getDashboardData(): Promise<AppData | null> {
     .from("projects")
     .select("id, title, type, image_url, image_storage_path, caption, aspect_ratio, prompt_details, prompt_full, user_id, created_at")
     .eq("user_id", uid)
+    .not("caption", "is", null)
+    .neq("caption", "")
     .order("created_at", { ascending: false })
     .limit(12);
 

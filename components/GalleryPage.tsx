@@ -1,66 +1,103 @@
 "use client";
 
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useAppContext } from '@/contexts/AppContext';
-import ProjectCard from './project-card';
 import ShareModal from './share-modal';
 import type { Project } from '@/lib/types';
+import ImageCard from './gallery/ImageCard';
+import TextCard from './gallery/TextCard';
+import ProjectCard from './project-card';
 
-type TabKey = 'all' | 'images' | 'captions' | 'texts' | 'edited';
+type TabKey = 'images' | 'texts' | 'projects';
 
 const tabs: { key: TabKey; label: string }[] = [
-  { key: 'all', label: 'Semua' },
-  { key: 'images', label: 'Gambar AI' },
-  { key: 'captions', label: 'Caption AI' },
-  { key: 'texts', label: 'Teks AI' },
-  { key: 'edited', label: 'Gambar Hasil Edit' },
+  { key: 'images', label: 'Gambar' },
+  { key: 'texts', label: 'Teks' },
+  { key: 'projects', label: 'Project' },
 ];
 
 const GalleryPage: React.FC = () => {
-  const { projects, creditHistory } = useAppContext();
-  const [activeTab, setActiveTab] = useState<TabKey>('all');
+  const { projects } = useAppContext();
+  const [activeTab, setActiveTab] = useState<TabKey>('images');
   const [shareProject, setShareProject] = useState<Project | null>(null);
+  const [allProjects, setAllProjects] = useState<Project[]>(projects || []);
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
-  const imageProjects = useMemo(
-    () => projects.filter((p) => Boolean(p.imageUrl)),
-    [projects]
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        setLoading(true);
+        setLoadError(null);
+        const res = await fetch('/api/projects', { cache: 'no-store' });
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(typeof data?.error === 'string' ? data.error : 'Gagal memuat data galeri');
+        }
+        const normalized: Project[] = (Array.isArray(data) ? data : []).map((d: any) => ({
+          id: Number(d.id),
+          title: d.title,
+          type: String(d.type ?? ''),
+          imageUrl: d.imageUrl ?? null,
+          imageStoragePath: d.imageStoragePath ?? null,
+          caption: d.caption ?? null,
+          aspectRatio: d.aspectRatio ?? null,
+          promptDetails: d.promptDetails ?? null,
+          promptFull: d.promptFull ?? null,
+          user_id: d.userId,
+          created_at: d.createdAt,
+        }));
+        if (!cancelled) setAllProjects(normalized);
+      } catch (e: unknown) {
+        if (!cancelled) setLoadError(e instanceof Error ? e.message : 'Gagal memuat data galeri');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+    load();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const imageItems = useMemo(
+    () => allProjects.filter((p) => Boolean(p.imageUrl) && (!p.caption || p.caption.trim() === '')),
+    [allProjects]
   );
 
-  const captionProjects = useMemo(
-    () => projects.filter((p) => Boolean(p.caption) || p.type === 'Caption AI'),
-    [projects]
+  const textItems = useMemo(
+    () => allProjects.filter((p) => !p.imageUrl && (Boolean(p.caption) || /caption|text/i.test(p.type))),
+    [allProjects]
   );
 
-  // Tidak ada flag eksplisit "edited"; asumsikan proyek bergambar adalah hasil edit/generate
-  const editedProjects = imageProjects;
-
-  const textActivities = useMemo(
-    () =>
-      creditHistory
-        .filter((h) => /Generate Caption|Caption/i.test(h.type))
-        .slice(0, 20),
-    [creditHistory]
+  const projectItems = useMemo(
+    () => allProjects.filter((p) => Boolean(p.imageUrl) && Boolean(p.caption) && p.caption!.trim() !== ''),
+    [allProjects]
   );
 
-  const displayedProjects = useMemo(() => {
+  const displayed = useMemo(() => {
     switch (activeTab) {
       case 'images':
-        return imageProjects;
-      case 'captions':
-        return captionProjects;
-      case 'edited':
-        return editedProjects;
-      case 'all':
+        return { images: imageItems, texts: [] as Project[], projects: [] as Project[] };
+      case 'texts':
+        return { images: [] as Project[], texts: textItems, projects: [] as Project[] };
+      case 'projects':
       default:
-        return projects;
+        return { images: [] as Project[], texts: [] as Project[], projects: projectItems };
     }
-  }, [activeTab, projects, imageProjects, captionProjects, editedProjects]);
+  }, [activeTab, imageItems, textItems, projectItems]);
+
+  const isEmpty =
+    displayed.images.length === 0 &&
+    displayed.texts.length === 0 &&
+    displayed.projects.length === 0;
 
   return (
     <div className="max-w-7xl mx-auto py-8 animate-fadeInUp">
       <div className="mb-6">
         <h1 className="text-4xl font-bold text-[#0D47A1]">Galeri</h1>
-        <p className="text-[#1565C0] mt-2">Koleksi hasil generate dan edit Anda.</p>
+        <p className="text-[#1565C0] mt-2">Koleksi hasil generate dan project Anda.</p>
       </div>
 
       <div className="flex flex-wrap gap-2 mb-6">
@@ -79,41 +116,25 @@ const GalleryPage: React.FC = () => {
         ))}
       </div>
 
-      {/* Grid Project */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-        {displayedProjects.length > 0 ? (
-          displayedProjects.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              onShareClick={(p) => setShareProject(p)}
-            />
-          ))
-        ) : (
-          <div className="col-span-full text-center text-gray-500 bg-white p-12 rounded-2xl border border-gray-200">
-            Belum ada item pada tab ini.
-          </div>
-        )}
-      </div>
-
-      {/* Daftar Aktivitas Teks (Caption) */}
-      {activeTab === 'texts' && (
-        <div className="mt-10 bg-white p-6 rounded-2xl border border-gray-200">
-          <h2 className="text-xl font-bold text-[#0D47A1] mb-4">Aktivitas Teks Terbaru</h2>
-          {textActivities.length > 0 ? (
-            <ul className="divide-y divide-gray-200">
-              {textActivities.map((item) => (
-                <li key={item.id} className="py-3 flex items-center justify-between">
-                  <span className="text-gray-700">{item.type}</span>
-                  <span className="text-sm text-gray-500">
-                    {new Date(item.date).toLocaleString()}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-gray-500">Belum ada aktivitas teks.</p>
-          )}
+      {loading ? (
+        <div className="text-center text-gray-500 bg-white p-12 rounded-2xl border border-gray-200">Memuat galeri...</div>
+      ) : loadError ? (
+        <div className="text-center text-red-600 bg-white p-12 rounded-2xl border border-red-200">{loadError}</div>
+      ) : isEmpty ? (
+        <div className="text-center text-gray-500 bg-white p-12 rounded-2xl border border-gray-200">
+          Belum ada item pada kategori ini.
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+          {displayed.images.map((p) => (
+            <ImageCard key={"img-" + p.id} project={p} onShareClick={setShareProject} />
+          ))}
+          {displayed.texts.map((p) => (
+            <TextCard key={"txt-" + p.id} project={p} onShareClick={setShareProject} />
+          ))}
+          {displayed.projects.map((p) => (
+            <ProjectCard key={"prj-" + p.id} project={p} onShareClick={(proj) => setShareProject(proj)} />
+          ))}
         </div>
       )}
 
@@ -129,4 +150,3 @@ const GalleryPage: React.FC = () => {
 };
 
 export default GalleryPage;
-

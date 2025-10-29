@@ -2,6 +2,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { Project } from '../lib/types';
 import { XIcon, ShareIcon, DownloadIcon, CopyIcon, CheckIcon } from '../lib/icons';
 
@@ -13,20 +14,23 @@ interface ShareModalProps {
 
 const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => {
   const [isShareApiSupported, setIsShareApiSupported] = useState(false);
+  const [isFileShareSupported, setIsFileShareSupported] = useState(false);
   const [captionCopied, setCaptionCopied] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
   const [imageAspectRatio, setImageAspectRatio] = useState('3/4');
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function') {
+    if (typeof window !== 'undefined') {
+      const supportsShare = typeof navigator.share === 'function';
+      setIsShareApiSupported(supportsShare);
+      if (supportsShare && typeof navigator.canShare === 'function') {
         try {
-            const dummyFile = new File([""], "dummy.txt", { type: "text/plain" });
-            if (navigator.canShare({ files: [dummyFile] })) {
-                setIsShareApiSupported(true);
-            }
+          const dummyFile = new File([""], "dummy.txt", { type: "text/plain" });
+          setIsFileShareSupported(navigator.canShare({ files: [dummyFile] }));
         } catch {
-            setIsShareApiSupported(false);
+          setIsFileShareSupported(false);
         }
+      }
     }
   }, []);
 
@@ -44,35 +48,59 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
     }
   }, [isOpen, project?.imageUrl]);
 
-  if (!isOpen || !project) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  if (!isOpen || !project || !mounted) {
     return null;
   }
+
+  const isProject = project.type === 'project';
+  const isImageOnly = !!project.imageUrl && !isProject;
+  const isTextOnly = !project.imageUrl;
+  const hasCaption = Boolean(project.caption && project.caption.trim() !== '');
 
   const handleNativeShare = async () => {
     try {
       setShareError(null);
-      navigator.clipboard.writeText(project.caption ?? project.type).then(() => {
-        setCaptionCopied(true);
-        setTimeout(() => setCaptionCopied(false), 2500);
-      });
-
-      if (!project.imageUrl) {
-        setShareError('Gambar tidak tersedia.');
-        return;
+      if (isTextOnly || hasCaption) {
+        navigator.clipboard.writeText(project.caption ?? project.type).then(() => {
+          setCaptionCopied(true);
+          setTimeout(() => setCaptionCopied(false), 2500);
+        });
       }
-      const response = await fetch(project.imageUrl);
-      const blob = await response.blob();
-      const file = new File([blob], 'image.jpg', { type: blob.type });
+      if (isTextOnly) {
+        // Share teks saja
+        await navigator.share({
+          title: project.title,
+          text: project.caption ?? project.title ?? 'Konten teks',
+        });
+      } else {
+        // Share dengan file gambar
+        if (!isFileShareSupported) {
+          // Fallback: tanpa dukungan file share, arahkan ke unduhan atau buka gambar
+          await navigator.share({ title: project.title, text: project.caption ?? project.title ?? '' });
+          onClose();
+          return;
+        }
+        if (!project.imageUrl) {
+          setShareError('Gambar tidak tersedia.');
+          return;
+        }
+        const response = await fetch(project.imageUrl);
+        const blob = await response.blob();
+        const file = new File([blob], 'image.jpg', { type: blob.type });
 
-      if (!navigator.canShare({ files: [file] })) {
-        throw new Error("Tidak dapat membagikan file ini.");
+        if (!navigator.canShare({ files: [file] })) {
+          throw new Error('Tidak dapat membagikan file ini.');
+        }
+
+        await navigator.share({
+          title: project.title,
+          text: project.caption ?? project.type,
+          files: [file],
+        });
       }
-
-      await navigator.share({
-        title: project.title,
-        text: project.caption ?? project.type,
-        files: [file],
-      });
       onClose();
     } catch (caughtError) {
       if ((caughtError as DOMException).name !== 'AbortError') {
@@ -117,46 +145,52 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
 
   const ManualOptions = () => (
     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+      {!isTextOnly && (
         <button
-            onClick={handleDownloadImage}
-            className="w-full flex items-center justify-center px-4 py-2 text-sm font-semibold text-[#1565C0] bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
+          onClick={handleDownloadImage}
+          className="w-full flex items-center justify-center px-4 py-2 text-sm font-semibold text-[#1565C0] bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors"
         >
-            <DownloadIcon className="w-5 h-5 mr-2" />
-            <span>Unduh Gambar</span>
+          <DownloadIcon className="w-5 h-5 mr-2" />
+          <span>Unduh Gambar</span>
         </button>
+      )}
+      {(isTextOnly || hasCaption) && (
         <button
-            onClick={handleCopyCaption}
-            className={`w-full flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${captionCopied ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-[#1565C0] hover:bg-blue-200'}`}
+          onClick={handleCopyCaption}
+          className={`w-full flex items-center justify-center px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${captionCopied ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-[#1565C0] hover:bg-blue-200'}`}
         >
-            {captionCopied ? (
-                <>
-                    <CheckIcon className="w-5 h-5 mr-2" />
-                    <span>Tersalin!</span>
-                </>
-            ) : (
-                <>
-                    <CopyIcon className="w-5 h-5 mr-2" />
-                    <span>Salin Caption</span>
-                </>
-            )}
+          {captionCopied ? (
+            <>
+              <CheckIcon className="w-5 h-5 mr-2" />
+              <span>Tersalin!</span>
+            </>
+          ) : (
+            <>
+              <CopyIcon className="w-5 h-5 mr-2" />
+              <span>{isTextOnly ? 'Salin Teks' : 'Salin Caption'}</span>
+            </>
+          )}
         </button>
+      )}
     </div>
   );
 
-  return (
+  const modal = (
     <div
-      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/60 z-[1000] flex items-start justify-center p-4 sm:p-6 overflow-y-auto"
       aria-labelledby="share-modal-title"
       role="dialog"
       aria-modal="true"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[90vh] md:max-h-[85vh] flex flex-col overflow-hidden transform transition-all animate-fadeInUp"
+        className="bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[95vh] flex flex-col overflow-hidden transform transition-all animate-fadeInUp mt-6 sm:mt-10"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
-          <h2 id="share-modal-title" className="text-xl font-bold text-[#0D47A1]">Bagikan Konten</h2>
+          <h2 id="share-modal-title" className="text-xl font-bold text-[#0D47A1]">
+            {isProject ? 'Bagikan Project' : isImageOnly ? 'Bagikan Gambar' : 'Bagikan Teks'}
+          </h2>
           <button
             type="button"
             onClick={onClose}
@@ -168,24 +202,24 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
         </div>
 
         <div className="flex-grow p-6 text-center overflow-y-auto">
-            <div className="mb-4">
-                <img 
-                    src={project.imageUrl || undefined} 
-                    alt={project.title} 
-                    className="w-full object-contain rounded-lg mx-auto shadow-md max-h-[55vh] md:max-h-[60vh]"
-                    style={{ 
-                        aspectRatio: imageAspectRatio
-                    }}
-                />
-            </div>
+            {!isTextOnly && project.imageUrl && (
+              <div className="mb-4">
+                  <img 
+                      src={project.imageUrl} 
+                      alt={project.title}
+                      className="w-full object-contain rounded-lg mx-auto shadow-md max-h-[55vh] md:max-h-[60vh]"
+                      style={{ aspectRatio: imageAspectRatio }}
+                  />
+              </div>
+            )}
             <h3 className="font-bold text-lg text-[#0D47A1] truncate">{project.title}</h3>
             <p className="text-sm text-gray-500 mb-6" style={{ 
                 overflow: 'hidden', 
                 display: '-webkit-box', 
-                WebkitLineClamp: 2, 
+                WebkitLineClamp: 3, 
                 WebkitBoxOrient: 'vertical' 
               }}>
-                {project.caption ?? project.type}
+                {project.caption ?? (isTextOnly ? 'Konten Teks' : project.type)}
             </p>
 
             {isShareApiSupported ? (
@@ -200,18 +234,20 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
                         className="w-full flex items-center justify-center px-4 py-3 text-base font-semibold text-white bg-[#0D47A1] hover:bg-[#1565C0] rounded-lg transition-colors"
                     >
                         <ShareIcon className="w-5 h-5 mr-3" />
-                        <span>Bagikan via...</span>
+                        <span>{isTextOnly ? 'Bagikan Teks...' : 'Bagikan via...'}</span>
                     </button>
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <div className="w-full border-t border-gray-200" />
-                        </div>
-                        <div className="relative flex justify-center text-sm">
-                            <span className="px-2 bg-white text-gray-500">
-                                Caption otomatis disalin untuk Anda
-                            </span>
-                        </div>
-                    </div>
+                    {(isTextOnly || hasCaption) && (
+                      <div className="relative">
+                          <div className="absolute inset-0 flex items-center">
+                              <div className="w-full border-t border-gray-200" />
+                          </div>
+                          <div className="relative flex justify-center text-sm">
+                              <span className="px-2 bg-white text-gray-500">
+                                  {isTextOnly ? 'Teks otomatis disalin untuk Anda' : 'Caption otomatis disalin untuk Anda'}
+                              </span>
+                          </div>
+                      </div>
+                    )}
                     <ManualOptions />
                 </div>
             ) : (
@@ -224,6 +260,8 @@ const ShareModal: React.FC<ShareModalProps> = ({ isOpen, onClose, project }) => 
       </div>
     </div>
   );
+
+  return createPortal(modal, document.body);
 };
 
 export default ShareModal;
