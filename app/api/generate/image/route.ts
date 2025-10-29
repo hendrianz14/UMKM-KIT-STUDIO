@@ -23,6 +23,45 @@ function getProfessionalDetail(
     return library[key] ?? key;
 }
 
+function buildGarnishSuggestion(subject: string | null, category: string | null): string {
+    const s = (subject || '').toLowerCase();
+    const c = (category || '').toLowerCase();
+
+    // Heuristik sederhana berbasis kata kunci agar garnish relevan dengan subjek
+    if (/kopi|coffee|espresso|latte|americano|cappuccino|macchiato|mocha/.test(s) || c === 'minuman' && /coffee|kopi/.test(s)) {
+        return 'coffee beans, cinnamon stick, cocoa powder dusting, milk foam art';
+    }
+    if (/matcha|green tea|ocha/.test(s)) {
+        return 'matcha powder dusting, bamboo whisk prop nearby, mint leaf (optional)';
+    }
+    if (/teh|tea|earl grey|chamomile|oolong|jasmine/.test(s)) {
+        return 'tea leaves, lemon slice, honey dipper, mint sprig';
+    }
+    if (/jeruk|orange/.test(s)) {
+        return 'fresh orange slice or wedge, orange peel twist, mint, ice cubes';
+    }
+    if (/lemon|lemonade/.test(s)) {
+        return 'lemon slice or wedge, lemon peel twist, mint, ice cubes';
+    }
+    if (/strawberry|berry|blueberry|raspberry|smoothie/.test(s)) {
+        return 'matching fresh berries, mint sprig, light chia seeds (optional)';
+    }
+    if (/coklat|chocolate|cocoa/.test(s)) {
+        return 'cocoa powder dusting, chocolate shavings, chocolate drizzle';
+    }
+    if (/soda|cola|soft drink|sparkling/.test(s)) {
+        return 'lime or lemon wedge, ice cubes, minimal condensation';
+    }
+    if (/mojito|mint/.test(s)) {
+        return 'fresh mint sprigs, lime wedge, crushed ice';
+    }
+    if (/milk|susu|milkshake|shake/.test(s)) {
+        return 'whipped cream (optional), chocolate shavings, matching syrup drizzle';
+    }
+    // Default aman dan netral
+    return 'ingredients that are directly related to the subject (same fruit/flavor), subtle mint, matching peels or shavings only';
+}
+
 export async function POST(request: Request) {
     try {
         const supabase = await supabaseRoute();
@@ -158,6 +197,11 @@ Follow these rules:
             if (interactionText) {
                 compositionInstruction = interactionText;
             }
+        }
+        // Komposisi Garnishes harus kontekstual terhadap subjek agar profesional (hindari garnish tidak relevan)
+        if (selectedStyles.composition === 'Garnishes') {
+            const garnish = buildGarnishSuggestion(detectedSubject, detectedCategory);
+            compositionInstruction = `Use context-appropriate garnish specific to '${detectedSubject || 'the drink'}': ${garnish}. Avoid any irrelevant garnish. Keep garnish minimal, tasteful, and complementary to the subject.`;
         }
         if (isolateProduct) {
             // Pastikan instruksi komposisi menekankan tanpa elemen manusia
