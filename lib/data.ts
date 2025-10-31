@@ -44,9 +44,13 @@ function startOfThisWeekISO() {
 }
 
 const planMap: Record<string, Plan> = {
-  Free: "Gratis",
+  // New canonical values
+  Gratis: "Gratis",
   Basic: "Basic",
   Pro: "Pro",
+  Enterprise: "Enterprise",
+  // Backwards compatibility with legacy values
+  Free: "Gratis",
   Business: "Enterprise",
 };
 
@@ -245,7 +249,7 @@ export async function getDashboardData(): Promise<AppData | null> {
     id: uid,
     name: profile?.name || authUser.user_metadata?.name || "User",
     email: authUser.email || "",
-    plan: planMap[profile?.plan as string] ?? "Free",
+    plan: planMap[profile?.plan as string] ?? "Gratis",
     credits: Number(wallet?.balance ?? 0),
     expiryDate: profile?.plan_expires_at ? new Date(profile.plan_expires_at).toISOString() : "",
   };

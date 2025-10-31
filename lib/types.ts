@@ -71,4 +71,4 @@ export type Preset = {
     category: string;
 };
 
-export type Page = "dashboard" | "generate-image" | "generate-caption" | "generate-text" | "gallery" | "credits-history" | "settings";
+export type Page = "dashboard" | "generate-image" | "generate-caption" | "generate-text" | "gallery" | "credits-history" | "settings" | "billing";

@@ -98,7 +98,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
   const [isSalesOpen, setIsSalesOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
   const [isCrmOpen, setIsCrmOpen] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(currentPage === 'settings');
+  const [isSettingsOpen, setIsSettingsOpen] = useState(currentPage === 'settings' || currentPage === 'billing');
   
   return (
     <aside
@@ -288,7 +288,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
             hasDropdown
             onClick={() => setIsSettingsOpen(!isSettingsOpen)}
             isDropdownOpen={isSettingsOpen}
-            active={currentPage === 'settings'}
+            active={currentPage === 'settings' || currentPage === 'billing'}
           />
            <div className={`grid transition-all duration-300 ease-in-out ${isSettingsOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
             <div className="overflow-hidden">
@@ -297,7 +297,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
                   <NavItem icon={<StoreIcon className="w-5 h-5" />} label="Storefront" />
                   <NavItem icon={<CalendarIcon className="w-5 h-5" />} label="Reservasi" />
                   <NavItem icon={<PaletteIcon className="w-5 h-5" />} label="Brand" />
-                  <NavItem icon={<CreditIcon className="w-5 h-5" />} label="Billing" />
+                  <NavItem icon={<CreditIcon className="w-5 h-5" />} label="Billing" active={currentPage === 'billing'} onClick={() => onNavigate('billing')} />
                   <NavItem icon={<UsersIcon className="w-5 h-5" />} label="Team" onClick={() => onNavigate('settings')} />
                 </div>
             </div>
