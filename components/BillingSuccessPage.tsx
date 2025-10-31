@@ -11,7 +11,7 @@ export default function BillingSuccessPage() {
         <div className="text-6xl mb-4">✅</div>
         <h1 className="text-3xl md:text-4xl font-bold text-[#0D47A1]">Pembayaran Berhasil!</h1>
         <p className="text-[#1565C0] mt-2">
-          Langganan kamu sudah aktif. Terima kasih sudah berlangganan UMKM KitStudio.
+          Langganan kamu sudah aktif. Terima kasih sudah berlangganan UKM Kits.
         </p>
 
         <button

@@ -8,7 +8,7 @@ const Logo: React.FC = () => (
     <svg className="w-8 h-8 text-accent" viewBox="0 0 24 24" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 2L2 7V17L12 22L22 17V7L12 2ZM12 4.43L19.57 9L12 13.57L4.43 9L12 4.43ZM3.5 8.09L12 12.91V20L3.5 15.18V8.09ZM20.5 15.18L12 20V12.91L20.5 8.09V15.18Z"/>
     </svg>
-    <span className="text-2xl font-bold text-primary transition-colors duration-300">UMKM KitStudio</span>
+    <span className="text-2xl font-bold text-primary transition-colors duration-300">UKM Kits</span>
   </div>
 );
 

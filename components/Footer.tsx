@@ -16,7 +16,7 @@ const Footer: React.FC = () => {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           {/* About Section */}
           <div className="md:col-span-1">
-            <h3 className="text-xl font-bold mb-4">UMKM KitStudio</h3>
+            <h3 className="text-xl font-bold mb-4">UKM Kits</h3>
             <p className="text-gray-400">Memberdayakan UMKM Indonesia melalui teknologi digital yang mudah diakses dan terjangkau.</p>
           </div>
 
@@ -52,7 +52,7 @@ const Footer: React.FC = () => {
         </div>
 
         <div className="mt-8 pt-8 border-t border-gray-700 text-center text-gray-400 text-sm">
-          &copy; {new Date().getFullYear()} UMKM KitStudio. All rights reserved.
+          &copy; {new Date().getFullYear()} UKM Kits. All rights reserved.
         </div>
       </div>
     </footer>

@@ -12,7 +12,7 @@ const StorefrontFooter = () => (
         className="flex items-center space-x-2 transition hover:text-gray-700"
       >
         <KitStudioLogo />
-        <span className="text-sm">Halaman ini dibuat di UMKM KitStudio</span>
+        <span className="text-sm">Halaman ini dibuat di UKM Kits</span>
       </a>
     </div>
   </footer>

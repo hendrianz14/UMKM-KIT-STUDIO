@@ -6,8 +6,8 @@ import Image from 'next/image';
 
 const Logo: React.FC = () => (
   <div className="flex items-center space-x-2">
-    <Image src="/umkmkitstudio.png" alt="UMKM KitStudio" width={32} height={32} className="w-8 h-8" />
-    <span className="text-2xl font-bold text-primary transition-colors duration-300">UMKM KitStudio</span>
+    <Image src="/umkmkitstudio.png" alt="UKM Kits" width={32} height={32} className="w-8 h-8" />
+    <span className="text-2xl font-bold text-primary transition-colors duration-300">UKM Kits</span>
   </div>
 );
 

@@ -9,7 +9,7 @@ type Props = {
 const KitStudioLogo = ({ className }: Props) => (
   <Image
     src="/umkmkitstudio.png"
-    alt="UMKM KitStudio"
+    alt="UKM Kits"
     width={24}
     height={24}
     className={["h-6 w-6", className].filter(Boolean).join(' ')}

@@ -131,7 +131,7 @@ const CreditsHistory: React.FC<{ history: CreditHistoryItem[] }> = ({ history })
 
 const Footer = () => (
   <footer className="flex flex-col md:flex-row justify-between items-center text-center md:text-left gap-6 text-sm text-gray-500 pt-8 border-t border-gray-200">
-    <p>© 2025 UMKM KitStudio. Seluruh hak cipta dilindungi.</p>
+    <p>© 2025 UKM Kits. Seluruh hak cipta dilindungi.</p>
     <div className="flex flex-col sm:flex-row items-center gap-4">
       <p className="text-[#1565C0] font-medium">Dapatkan tips konten</p>
       <button className="px-5 py-2 bg-[#0D47A1] text-white font-semibold rounded-lg w-full sm:w-auto">

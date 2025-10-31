@@ -12,7 +12,7 @@ const CTASection: React.FC = () => {
           className="flex items-center space-x-2 text-gray-500 hover:text-gray-700 transition-colors"
         >
           <KitStudioLogo />
-          <span className="text-sm">Halaman ini dibuat di UMKM KitStudio</span>
+          <span className="text-sm">Halaman ini dibuat di UKM Kits</span>
         </a>
       </div>
     </footer>

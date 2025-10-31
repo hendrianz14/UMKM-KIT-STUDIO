@@ -1,4 +1,4 @@
--- UMKM KitStudio billing schema for Supabase
+-- UKM Kits billing schema for Supabase
 -- Transactions and Subscriptions + profiles augmentation
 
 -- 1) transactions table

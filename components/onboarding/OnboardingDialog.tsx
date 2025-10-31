@@ -110,7 +110,7 @@ export default function OnboardingDialog({ onClose }: OnboardingDialogProps) {
           </div>
 
           <SelectInput
-            label="Tujuan utama pakai UMKM KitStudio"
+            label="Tujuan utama pakai UKM Kits"
             value={mainPurpose}
             onChange={(e) => setMainPurpose(e.target.value)}
             options={purposeOptions}
@@ -125,7 +125,7 @@ export default function OnboardingDialog({ onClose }: OnboardingDialogProps) {
           />
 
           <SelectInput
-            label="Dari mana tahu UMKM KitStudio?"
+            label="Dari mana tahu UKM Kits?"
             value={source}
             onChange={(e) => setSource(e.target.value)}
             options={sourceOptions}

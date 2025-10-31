@@ -110,7 +110,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
       aria-label="Sidebar"
     >
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-xl font-bold text-white px-4">UMKM KitStudio</h1>
+        <h1 className="text-xl font-bold text-white px-4">UKM Kits</h1>
         <button onClick={onClose} className="lg:hidden p-1 text-blue-200 hover:text-white" aria-label="Close menu">
           <XIcon className="w-6 h-6" />
         </button>

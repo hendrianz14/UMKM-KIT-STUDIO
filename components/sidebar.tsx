@@ -18,20 +18,14 @@ import {
   HelpCircleIcon,
   BarChartIcon,
   MessageCircleIcon,
-  DollarSignIcon,
   CalendarIcon,
-  UsersIcon,
   PieChartIcon,
   Share2Icon,
-  PaletteIcon,
   CreditIcon,
   SparklesIcon,
   MessageSquareIcon,
   PlayIcon,
-  InboxIcon,
-  FileTextIcon,
   SlashIcon,
-  TargetIcon,
   KeyIcon,
 } from '@/lib/constants';
 import { Page } from '@/lib/types';
@@ -95,9 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
   const [isContentStudioOpen, setIsContentStudioOpen] = useState(isContentPage);
   const [isStorefrontOpen, setIsStorefrontOpen] = useState(false);
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [isSalesOpen, setIsSalesOpen] = useState(false);
   const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [isCrmOpen, setIsCrmOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(currentPage === 'settings' || currentPage === 'billing');
   
   return (
@@ -111,7 +103,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
       aria-label="Sidebar"
     >
       <div className="flex items-center justify-between mb-8">
-        <h1 className="text-xl font-bold text-white px-4">UMKM KitStudio</h1>
+        <h1 className="text-xl font-bold text-white px-4">UKM Kits</h1>
         <button onClick={onClose} className="lg:hidden p-1 text-blue-200 hover:text-white" aria-label="Close menu">
           <XIcon className="w-6 h-6" />
         </button>
@@ -220,24 +212,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
           </div>
         </div>
 
-        {/* Sales-Lite Dropdown Section */}
-        <div>
-          <NavItem 
-            icon={<DollarSignIcon className="w-5 h-5" />} 
-            label="Sales-Lite" 
-            hasDropdown 
-            onClick={() => setIsSalesOpen(!isSalesOpen)}
-            isDropdownOpen={isSalesOpen}
-          />
-          <div className={`grid transition-all duration-300 ease-in-out ${isSalesOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-            <div className="overflow-hidden">
-                <div className="pt-2 pl-6 space-y-1">
-                  <NavItem icon={<InboxIcon className="w-5 h-5" />} label="Inquiries" />
-                  <NavItem icon={<FileTextIcon className="w-5 h-5" />} label="Quote" />
-                </div>
-            </div>
-          </div>
-        </div>
+        
         
         {/* Booking-Lite Dropdown Section */}
         <div>
@@ -259,24 +234,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
           </div>
         </div>
 
-        {/* Customers (CRM) Dropdown Section */}
-        <div>
-          <NavItem 
-            icon={<UsersIcon className="w-5 h-5" />} 
-            label="Customers (CRM)" 
-            hasDropdown 
-            onClick={() => setIsCrmOpen(!isCrmOpen)}
-            isDropdownOpen={isCrmOpen}
-          />
-          <div className={`grid transition-all duration-300 ease-in-out ${isCrmOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
-            <div className="overflow-hidden">
-                <div className="pt-2 pl-6 space-y-1">
-                  <NavItem icon={<UsersIcon className="w-5 h-5" />} label="Customers" />
-                  <NavItem icon={<TargetIcon className="w-5 h-5" />} label="Segments" />
-                </div>
-            </div>
-          </div>
-        </div>
+        
         
         <NavItem icon={<PieChartIcon className="w-5 h-5" />} label="Analytics" />
         
@@ -294,11 +252,7 @@ const Sidebar: React.FC<SidebarProps> = ({ isOpen, onClose, currentPage, onNavig
             <div className="overflow-hidden">
                 <div className="pt-2 pl-6 space-y-1">
                   <NavItem icon={<Share2Icon className="w-5 h-5" />} label="Channels" />
-                  <NavItem icon={<StoreIcon className="w-5 h-5" />} label="Storefront" />
-                  <NavItem icon={<CalendarIcon className="w-5 h-5" />} label="Reservasi" />
-                  <NavItem icon={<PaletteIcon className="w-5 h-5" />} label="Brand" />
                   <NavItem icon={<CreditIcon className="w-5 h-5" />} label="Billing" active={currentPage === 'billing'} onClick={() => onNavigate('billing')} />
-                  <NavItem icon={<UsersIcon className="w-5 h-5" />} label="Team" onClick={() => onNavigate('settings')} />
                 </div>
             </div>
           </div>

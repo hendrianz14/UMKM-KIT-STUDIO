@@ -39,8 +39,8 @@ const FAQItem: React.FC<FAQItemProps> = ({ question, answer, isOpen, onClick }) 
 
 const faqData = [
     {
-        question: "Apa itu UMKM KitStudio?",
-        answer: "UMKM KitStudio adalah platform berbasis AI yang membantu UMKM membuat konten media sosial berkualitas tinggi—seperti gambar, caption, dan desain—dengan cepat dan mudah."
+        question: "Apa itu UKM Kits?",
+        answer: "UKM Kits adalah platform berbasis AI yang membantu UMKM membuat konten media sosial berkualitas tinggi—seperti gambar, caption, dan desain—dengan cepat dan mudah."
     },
     {
         question: "Apakah saya perlu keahlian teknis atau desain?",
